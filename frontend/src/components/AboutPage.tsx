@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { ScrollBackgroundVideo } from './ScrollBackgroundVideo';
 import {
   ArrowRight,
   ShieldCheck,
@@ -28,6 +29,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
   return (
     <div className="relative min-h-screen bg-[#05070d] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+      {/* 🎬 Scroll-Bound Background Video (Synced to User Scrolling) */}
+      <ScrollBackgroundVideo
+        src="/assets/back.mp4"
+        poster="/assets/earth-horizon.png"
+        opacity={0.45}
+      />
+
       {/* FULL-SCREEN HERO */}
       <section className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden satellite-grid">
         {/* Background Earth Orbit Graphic */}
