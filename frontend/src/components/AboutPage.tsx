@@ -778,12 +778,17 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          {/* 3-Column Grid of Vertical Cards (matching Image 2) */}
+          {/* 3-Column Grid of Vertical Cards (matching the blue styled format of Image 1) */}
           <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: ANSWERED */}
-            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-emerald-400/60">
+            <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <CheckCircle2 className="w-6 h-6 text-emerald-400 mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    01
+                  </span>
+                  <CheckCircle2 className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   ANSWERED
                 </h3>
@@ -794,9 +799,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             </div>
 
             {/* Card 2: UNCERTAIN */}
-            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-amber-400/60">
+            <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <AlertTriangle className="w-6 h-6 text-amber-400 mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    02
+                  </span>
+                  <AlertTriangle className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   UNCERTAIN
                 </h3>
@@ -807,9 +817,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             </div>
 
             {/* Card 3: REFUSED */}
-            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-rose-400/60">
+            <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <XCircle className="w-6 h-6 text-rose-400 mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    03
+                  </span>
+                  <XCircle className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   REFUSED
                 </h3>
@@ -848,7 +863,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             {/* Case 1: Forest Protection */}
             <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <TreePine className="w-6 h-6 text-[#22D3EE] mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    01
+                  </span>
+                  <TreePine className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   Forest Protection
                 </h3>
@@ -861,7 +881,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             {/* Case 2: Flood-Plain Growth */}
             <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <Building className="w-6 h-6 text-[#22D3EE] mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    02
+                  </span>
+                  <Building className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   Flood-Plain Growth
                 </h3>
@@ -874,7 +899,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             {/* Case 3: Disaster Response */}
             <div className="light-glass-card p-6 flex flex-col justify-between">
               <div>
-                <Waves className="w-6 h-6 text-[#22D3EE] mb-4" strokeWidth={1.5} />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="font-mono text-[11px] text-[#22D3EE] font-semibold tracking-wider">
+                    03
+                  </span>
+                  <Waves className="w-5 h-5 text-[#22D3EE]" strokeWidth={1.5} />
+                </div>
                 <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   Disaster Response
                 </h3>
