@@ -56,12 +56,27 @@ video, canvas {
   --header-height-sm: 72px;
   --chat-header-height: 64px;
 
-  --bg-fallback: #05070F;
+  /* Spark Dark Palette */
+  --bg-base: #0B0D12;
+  --bg-sidebar: #0F1218;
+  --bg-surface: #151922;
+  --bg-elevated: #1C212C;
+  --border: #262C3A;
+  --text-primary: #E8ECF4;
+  --text-secondary: #9AA3B5;
+  --text-muted: #6B7385;
+  --spark: #22D3EE;
+  --spark-hover: #67E8F9;
+  --answered: #34D399;
+  --uncertain: #FBBF24;
+  --refused: #F87171;
+
+  --bg-fallback: #0B0D12;
   --scrim: rgba(4, 6, 16, 0.62);
-  --surface: rgba(8, 12, 26, 0.86);   /* composer, popovers, modals ONLY */
-  --surface-2: rgba(255, 255, 255, 0.06); /* hover and raised states */
-  --line: rgba(255, 255, 255, 0.10); /* hairlines, used sparingly */
-  --text: #F2F6FF;
+  --surface: #151922;
+  --surface-2: #1C212C;
+  --line: #262C3A;
+  --text: #E8ECF4;
   --text-muted: #B4BFDA;
   --text-faint: #8793B3;
   --accent: #22D3EE;

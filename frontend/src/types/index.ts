@@ -87,3 +87,6 @@ export interface SatelliteProvider {
   spectralBands: string;
   description: string;
 }
+
+export * from './project';
+

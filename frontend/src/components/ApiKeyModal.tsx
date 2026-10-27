@@ -90,30 +90,30 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         onClose();
         setStatus('idle');
         setApiKey('');
-      }, 900);
-    }, 1200);
+      }, 700);
+    }, 1000);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#02040A]/70 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0D12]/80 backdrop-blur-none animate-in fade-in duration-150"
       onClick={e => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg bg-[#0A0F1D] border border-[#151D33] rounded-[20px] p-6 shadow-2xl flex flex-col text-[#E8EEFC] space-y-5">
+      <div className="relative w-full max-w-lg bg-[#0F1218] border border-[#262C3A] rounded-2xl p-6 shadow-2xl flex flex-col text-[#E8ECF4] space-y-5">
         {/* Modal Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[rgba(34,211,238,0.12)] border border-[#22D3EE]/30 flex items-center justify-center text-[#22D3EE]">
-              <Satellite className="w-5 h-5" strokeWidth={1.5} />
+            <div className="w-9 h-9 rounded-xl bg-[#22D3EE]/10 border border-[#22D3EE]/30 flex items-center justify-center text-[#22D3EE]">
+              <Satellite className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
-              <h3 className="font-heading font-semibold text-lg text-white">
+              <h3 className="font-heading font-semibold text-lg text-[#E8ECF4]">
                 Connect Satellite Dataset
               </h3>
-              <p className="text-xs text-[#8A97B8]">
-                Stream orthomosaics directly from Earth observation APIs.
+              <p className="text-xs text-[#9AA3B5]">
+                Stream orthomosaics directly via provider API credentials.
               </p>
             </div>
           </div>
@@ -121,27 +121,27 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#8A97B8] hover:text-white hover:bg-[#0F1627] transition-colors"
+            className="p-1.5 rounded-lg text-[#9AA3B5] hover:text-[#E8ECF4] hover:bg-[#1C212C] transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Slot Selector (Asks "Which slot?") */}
+        {/* Slot Selector */}
         <div className="space-y-1.5">
-          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5A6685] block">
+          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#6B7385] block">
             Target Slot
           </label>
           {mode === 'comparison' ? (
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#05070F] border border-[#151D33]">
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#151922] border border-[#262C3A]">
               <button
                 type="button"
                 onClick={() => setSelectedSlot('past')}
                 className={`py-2 px-3 rounded-lg text-xs font-mono uppercase tracking-wider transition-colors ${
                   selectedSlot === 'past'
-                    ? 'bg-[rgba(34,211,238,0.12)] text-[#22D3EE] font-semibold'
-                    : 'text-[#8A97B8] hover:text-white'
+                    ? 'bg-[#22D3EE] text-[#0B0D12] font-semibold'
+                    : 'text-[#9AA3B5] hover:text-[#E8ECF4]'
                 }`}
               >
                 Past Image Slot
@@ -151,15 +151,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 onClick={() => setSelectedSlot('new')}
                 className={`py-2 px-3 rounded-lg text-xs font-mono uppercase tracking-wider transition-colors ${
                   selectedSlot === 'new'
-                    ? 'bg-[rgba(34,211,238,0.12)] text-[#22D3EE] font-semibold'
-                    : 'text-[#8A97B8] hover:text-white'
+                    ? 'bg-[#22D3EE] text-[#0B0D12] font-semibold'
+                    : 'text-[#9AA3B5] hover:text-[#E8ECF4]'
                 }`}
               >
-                New Image Slot
+                Present Image Slot
               </button>
             </div>
           ) : (
-            <div className="py-2 px-3 rounded-xl bg-[#05070F] border border-[#151D33] text-xs font-mono text-[#8A97B8]">
+            <div className="py-2 px-3 rounded-xl bg-[#151922] border border-[#262C3A] text-xs font-mono text-[#9AA3B5]">
               Interactive Input Slot (Active Image)
             </div>
           )}
@@ -167,16 +167,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
         {/* Provider Dropdown */}
         <div className="space-y-1.5">
-          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5A6685] block">
+          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#6B7385] block">
             Provider Constellation
           </label>
           <select
             value={selectedProviderId}
             onChange={e => setSelectedProviderId(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F1627] border border-[#151D33] text-sm text-white focus:outline-none focus:border-[#22D3EE] transition-colors"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[#1C212C] border border-[#262C3A] text-sm text-[#E8ECF4] focus:outline-none focus:border-[#22D3EE] transition-colors"
           >
             {SAMPLE_PROVIDERS.map(provider => (
-              <option key={provider.id} value={provider.id}>
+              <option key={provider.id} value={provider.id} className="bg-[#1C212C] text-[#E8ECF4]">
                 {provider.name} ({provider.resolution} GSD, {provider.revisit})
               </option>
             ))}
@@ -185,7 +185,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
         {/* Masked API Key Input */}
         <div className="space-y-1.5">
-          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#5A6685] block">
+          <label className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#6B7385] block">
             API Secret Token
           </label>
           <div className="relative">
@@ -194,18 +194,18 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder="e.g. sk_live_copernicus_..."
-              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0F1627] border border-[#151D33] text-sm text-white font-mono placeholder-[#5A6685] focus:outline-none focus:border-[#22D3EE] transition-colors"
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#1C212C] border border-[#262C3A] text-sm text-[#E8ECF4] font-mono placeholder-[#6B7385] focus:outline-none focus:border-[#22D3EE] transition-colors"
             />
             <button
               type="button"
               onClick={() => setShowKey(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A97B8] hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9AA3B5] hover:text-[#E8ECF4] transition-colors"
               aria-label={showKey ? 'Hide key' : 'Show key'}
             >
               {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[11px] text-[#5A6685]">
+          <p className="text-[11px] text-[#6B7385]">
             Keys are held strictly in memory for this session and never saved to localStorage.
           </p>
         </div>
@@ -215,10 +215,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
           <div
             className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
               status === 'error'
-                ? 'bg-rose-500/10 text-[#F87171] border border-rose-500/20'
+                ? 'bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/20'
                 : status === 'success'
-                ? 'bg-emerald-500/10 text-[#34D399] border border-emerald-500/20'
-                : 'bg-cyan-500/10 text-[#22D3EE] border border-cyan-500/20'
+                ? 'bg-[#34D399]/10 text-[#34D399] border border-[#34D399]/20'
+                : 'bg-[#22D3EE]/10 text-[#22D3EE] border border-[#22D3EE]/20'
             }`}
           >
             {status === 'error' && <AlertCircle className="w-4 h-4 shrink-0" />}
@@ -229,11 +229,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         )}
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#151D33]">
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#262C3A]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-medium text-[#8A97B8] hover:text-white hover:bg-[#0F1627] transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-medium text-[#9AA3B5] hover:text-[#E8ECF4] hover:bg-[#1C212C] transition-colors"
           >
             Cancel
           </button>
@@ -241,7 +241,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
             type="button"
             onClick={handleConnect}
             disabled={status === 'testing'}
-            className="px-6 py-2.5 rounded-xl text-xs font-semibold text-slate-950 bg-[#22D3EE] hover:bg-[#67e8f9] disabled:opacity-50 shadow-[0_0_20px_rgba(34,211,238,0.25)] transition-all flex items-center gap-2 active:scale-95"
+            className="px-6 py-2.5 rounded-xl text-xs font-semibold text-[#0B0D12] bg-[#22D3EE] hover:bg-[#67E8F9] disabled:opacity-50 transition-all flex items-center gap-2 active:scale-95 shadow-sm"
           >
             {status === 'testing' ? (
               <>

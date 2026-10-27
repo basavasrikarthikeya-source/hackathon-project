@@ -100,28 +100,37 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
   return (
-    <div className="w-full rounded-[14px] overflow-hidden border border-[#151D33] bg-[#0A0F1D]">
+    <div
+      className="w-full rounded-[14px] overflow-hidden transition-all"
+      style={{
+        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.45)',
+        outline: '1px solid rgba(255, 255, 255, 0.12)'
+      }}
+    >
       {/* Top Floating Control Bar */}
-      <div className="p-3 border-b border-[#151D33] flex flex-wrap items-center justify-between gap-3 bg-[#0A0F1D]">
+      <div
+        className="p-2.5 px-3.5 border-b border-[rgba(255,255,255,0.10)] flex flex-wrap items-center justify-between gap-3 text-xs"
+        style={{ background: 'rgba(8, 12, 26, 0.86)' }}
+      >
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono text-[#8A97B8] uppercase tracking-wider font-semibold">
+          <span className="text-[11px] font-mono text-[#8793B3] uppercase tracking-wider font-semibold">
             Bi-Temporal Coregistration
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[rgba(34,211,238,0.12)] text-[#22D3EE] border border-[#22D3EE]/30">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[rgba(34,211,238,0.14)] text-[#22D3EE]">
             RMSE 0.18px
           </span>
         </div>
 
         {/* View Controls: Slider vs Side-by-Side & Change Overlay */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Change Polygons Overlay Toggle */}
           <button
             type="button"
             onClick={() => setShowOverlay(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all border ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] text-xs font-mono transition-all ${
               showOverlay
-                ? 'bg-[rgba(34,211,238,0.15)] text-[#22D3EE] border-[#22D3EE]/40'
-                : 'bg-[#0F1627] text-[#8A97B8] border-[#151D33] hover:text-[#E8EEFC]'
+                ? 'bg-[rgba(34,211,238,0.16)] text-[#22D3EE]'
+                : 'text-[#B4BFDA] hover:text-[#F2F6FF] hover:bg-[rgba(255,255,255,0.06)]'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -129,14 +138,14 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
           </button>
 
           {/* Slider vs Side-by-Side */}
-          <div className="flex items-center bg-[#05070F] p-0.5 rounded-lg border border-[#151D33]">
+          <div className="flex items-center p-0.5 rounded-[10px] border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.04)]">
             <button
               type="button"
               onClick={() => setViewMode('slider')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-xs font-medium transition-all ${
                 viewMode === 'slider'
-                  ? 'bg-[#0F1627] text-[#E8EEFC] border border-[#151D33] shadow-sm'
-                  : 'text-[#8A97B8] hover:text-[#E8EEFC]'
+                  ? 'bg-[rgba(34,211,238,0.16)] text-[#22D3EE]'
+                  : 'text-[#B4BFDA] hover:text-[#F2F6FF]'
               }`}
             >
               <SplitSquareVertical className="w-3.5 h-3.5 text-[#22D3EE]" />
@@ -227,10 +236,10 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
               </svg>
             )}
 
-            {/* "NEW IMAGE" Label Badge */}
-            <div className="absolute top-3 left-3 bg-[#05070F]/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-[#22D3EE]/40 text-[10px] font-mono text-[#22D3EE] font-semibold flex items-center gap-1.5 shadow-md">
+            {/* "PRESENT IMAGE" Label Badge */}
+            <div className="absolute top-3 left-3 bg-[#0F1218]/90 px-2.5 py-1 rounded-md border border-[#22D3EE]/40 text-[10px] font-mono text-[#22D3EE] font-semibold flex items-center gap-1.5 shadow-md">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22D3EE] animate-pulse" />
-              NEW: {afterImage.name || 'Current'}
+              PRESENT: {afterImage.name || 'Current'}
             </div>
           </div>
 
@@ -310,9 +319,9 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
                 )}
               </svg>
             )}
-            <div className="absolute top-3 left-3 bg-[#05070F]/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-[#22D3EE]/40 text-[10px] font-mono text-[#22D3EE] font-semibold flex items-center gap-1.5">
+            <div className="absolute top-3 left-3 bg-[#0F1218]/90 px-2.5 py-1 rounded-md border border-[#22D3EE]/40 text-[10px] font-mono text-[#22D3EE] font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22D3EE] animate-pulse" />
-              NEW: {afterImage.name}
+              PRESENT: {afterImage.name}
             </div>
             <div className="absolute bottom-2 left-2 right-2 bg-[#0A0F1D]/80 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-[#151D33] text-[10px] font-mono text-[#8A97B8] flex items-center justify-between">
               <span>{afterImage.sensor || 'Current Sensor'}</span>
