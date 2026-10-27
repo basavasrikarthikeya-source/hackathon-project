@@ -35,7 +35,7 @@ export const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-[#05070d] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-[#02040A] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
         {/* Top Bar with Drishti logo, links back to About, Mode Switcher, and Theme Selector */}
         <Navbar
           currentRoute={currentRoute}

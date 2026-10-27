@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppMode } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeSelector } from './ThemeSelector';
-import { Eye, SplitSquareVertical, MessageSquareText, ShieldCheck } from 'lucide-react';
+import { SplitSquareVertical, MessageSquareText, ArrowRight } from 'lucide-react';
 
 interface NavbarProps {
   currentRoute: '/' | '/chat';
@@ -18,7 +18,73 @@ export const Navbar: React.FC<NavbarProps> = ({
   onModeChange
 }) => {
   const { themeConfig } = useTheme();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
+  useEffect(() => {
+    if (currentRoute !== '/') {
+      setIsScrolled(true);
+      return;
+    }
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [currentRoute]);
+
+  // ON ABOUT PAGE: Transparent at top, thin blurred glass bar after ~40px scroll
+  if (currentRoute === '/') {
+    return (
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
+          isScrolled
+            ? 'bg-[#02040A]/75 backdrop-blur-md border-b border-white/10 shadow-lg py-3'
+            : 'bg-transparent border-b border-transparent py-5'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-4">
+          {/* Left: Logo & Drishti Name */}
+          <button
+            type="button"
+            onClick={() => onNavigate('/')}
+            className="flex items-center gap-3 group text-left transition-transform active:scale-95"
+            aria-label="Drishti Home"
+          >
+            {!logoError ? (
+              <img
+                src="/logo.png"
+                alt="Drishti Logo"
+                onError={() => setLogoError(true)}
+                className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+            ) : (
+              /* TODO: Add logo at /public/logo.png or /public/logo.svg */
+              <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-xs font-mono text-cyan-400">
+                D
+              </div>
+            )}
+            <span className="font-heading font-bold text-xl sm:text-2xl tracking-tight text-white/95 group-hover:text-cyan-300 transition-colors">
+              Drishti
+            </span>
+          </button>
+
+          {/* Right: Small "Launch Studio" button (No /chat chip, no version, no palette toggle) */}
+          <button
+            type="button"
+            onClick={() => onNavigate('/chat')}
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-950 bg-[#22D3EE] hover:bg-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)] transition-all flex items-center gap-1.5 active:scale-95 group"
+          >
+            <span>Launch Studio</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
+      </header>
+    );
+  }
+
+  // ON CHAT PAGE: Preserved untouched functionality for /chat
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-950/80 backdrop-blur-xl transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -28,13 +94,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => onNavigate('/')}
           className="flex items-center gap-3 group text-left transition-transform active:scale-95"
         >
-          {/* Logo Icon */}
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:border-cyan-400 transition-all overflow-hidden">
-            <div className="absolute inset-0 bg-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Eye className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
-            {/* Orbital ring accent */}
-            <div className="absolute -inset-1 border border-cyan-400/20 rounded-xl pointer-events-none animate-pulse-slow" />
-          </div>
+          {!logoError ? (
+            <img
+              src="/logo.png"
+              alt="Drishti Logo"
+              onError={() => setLogoError(true)}
+              className="h-9 w-auto object-contain"
+            />
+          ) : (
+            <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-xs font-mono text-cyan-400">
+              D
+            </div>
+          )}
 
           <div>
             <div className="flex items-center gap-2">
@@ -52,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         {/* Center: Segmented Mode Switcher (Visible on Chat page) */}
-        {currentRoute === '/chat' && onModeChange && (
+        {onModeChange && (
           <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 shadow-inner relative">
             <button
               type="button"
@@ -106,29 +177,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right side controls: Navigation, Theme Selector */}
+        {/* Right side controls on Chat page */}
         <div className="flex items-center gap-2.5">
-          {currentRoute === '/' ? (
-            <button
-              type="button"
-              onClick={() => onNavigate('/chat')}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.35)] transition-all flex items-center gap-2 active:scale-95"
-            >
-              <span>Launch Studio</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-950/20 text-slate-950">
-                /chat
-              </span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onNavigate('/')}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-white/10 transition-colors"
-            >
-              About Drishti
-            </button>
-          )}
-
+          <button
+            type="button"
+            onClick={() => onNavigate('/')}
+            className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-white/10 transition-colors"
+          >
+            About Drishti
+          </button>
           <ThemeSelector compact />
         </div>
       </div>
