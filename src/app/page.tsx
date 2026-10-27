@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase, Job } from "@/lib/supabase";
+import type { Session, RealtimeChannel } from "@supabase/supabase-js";
 import { engineOnline, triggerWorker } from "@/lib/engine";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { DrishtiHeader } from "@/components/DrishtiHeader";
@@ -20,7 +21,7 @@ import { AboutModal } from "@/components/modals/AboutModal";
 import { PasteUrlModal } from "@/components/modals/PasteUrlModal";
 
 import { Project, Inspection } from "@/types/drishti";
-import { Loader2 } from "lucide-react";
+// import { Loader2 } from "lucide-react";
 
 // Default Projects (Photo 2)
 const INITIAL_PROJECTS: Project[] = [
@@ -165,7 +166,7 @@ export default function SatQueryDrishtiApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Engine & Auth State
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isEngineOnline, setIsEngineOnline] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -178,7 +179,7 @@ export default function SatQueryDrishtiApp() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Active channels ref for Realtime
-  const activeChannels = useRef<Record<string, any>>({});
+  const activeChannels = useRef<Record<string, RealtimeChannel>>({});
   const watchdogTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // 1. Initial Auth & Engine Health Check
@@ -343,6 +344,12 @@ export default function SatQueryDrishtiApp() {
   const handleSubmitQuery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
+
+    // [C-3] Auth gate: jobs table requires non-null user_id (NOT NULL FK to auth.users)
+    if (!session) {
+      setShowAuthModal(true);
+      return;
+    }
 
     if (mode === "comparison" && (!beforeFile || !afterFile)) {
       alert("Comparison mode requires both a Before (T1) and After (T2) satellite image.");

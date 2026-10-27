@@ -1,17 +1,20 @@
-# Hackathon Project
+# Drishti — Satellite Intelligence Studio
 
-A collaborative hackathon project built with Antigravity.
+**ST-09 SatQuery | Chakravyuh 2026**  
+AI-powered satellite imagery analysis and change-detection for government officers. *Model Flags, Humans Decide.*
 
 ---
 
 ## 📁 Repository Structure
 
 ```text
-├── frontend/       # Web / Mobile client application
-├── backend/        # Server API, database services, and ML models
-├── docs/           # Documentation, architecture diagrams, and pitch deck
-├── .env.example    # Template for required environment variables
-└── README.md       # Project overview & contribution guide
+├── src/             # Next.js 16 Studio (primary demo app — Gradio + Supabase Realtime)
+├── frontend/        # Vite/React UI (rich component library — simulated backend)
+├── backend/         # Kaggle AI Worker (Qwen2.5-VL + Gradio tunnel)
+├── docs/            # Schema, architecture, and pitch deck
+├── public/          # Static assets for Next.js app
+├── .env.example     # Environment variable template
+└── README.md        # This file
 ```
 
 ---
@@ -20,16 +23,57 @@ A collaborative hackathon project built with Antigravity.
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/basavasrikarthikeya-source/hackathon-project.git
+git clone https://github.com/basavasrikanthikeya-source/hackathon-project.git
 cd hackathon-project
 ```
 
-### 2. Configure Environment
-Never commit real secrets or `.env` files to git.
+### 2. Install Dependencies
+
+**Next.js Studio (primary app):**
 ```bash
-cp .env.example .env
-# Edit .env with your local developer keys
+npm install
 ```
+
+**Vite Frontend (secondary UI):**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 3. Configure Environment
+```bash
+# For the Next.js Studio:
+cp .env.example .env.local
+# Edit .env.local — fill in NEXT_PUBLIC_SUPABASE_ANON_KEY at minimum.
+# Set NEXT_PUBLIC_GRADIO_URL=mock for local dev (no Kaggle session needed).
+
+# For the Vite frontend:
+cp frontend/.env.example frontend/.env
+# Edit frontend/.env — fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
+```
+
+### 4. Run the Next.js Studio
+```bash
+npm run dev
+# Open http://localhost:3000
+```
+
+### 5. Run the Vite Frontend (optional, simulated mode)
+```bash
+cd frontend
+npm run dev
+# Open http://localhost:5173
+```
+
+### 6. Start the Kaggle AI Worker (for real inference)
+1. Upload `backend/satquery_kaggle_worker.ipynb` to Kaggle
+2. Enable GPU (T4 or P100) and Internet in Notebook Settings
+3. Run all cells — the last cell prints a `https://xxxx.gradio.live` URL
+4. Copy that URL and set `NEXT_PUBLIC_GRADIO_URL=https://xxxx.gradio.live` in `.env.local`
+5. Restart `npm run dev`
+
+> ⚠️ **Gradio tunnel URLs expire** when the Kaggle session ends. Get a fresh URL before the demo!
 
 ---
 

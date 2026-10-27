@@ -3,7 +3,7 @@ import { DEMO_ANSWERS, SAMPLE_IMAGES } from '../constants/sampleData';
 
 // API configuration from environment variables
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-export const USE_MOCK_ENGINE = import.meta.env.VITE_USE_MOCK_ENGINE !== 'false'; // Defaults to true if no backend URL set
+export const USE_MOCK_ENGINE = import.meta.env.VITE_USE_MOCK_ENGINE === 'true'; // opt-in: set to 'true' to force mock; defaults to real backend when VITE_API_BASE_URL is set
 
 export interface AnalyzePayload {
   prompt: string;

@@ -38,6 +38,7 @@ downloads/
 eggs/
 .eggs/
 /lib/
+!src/lib/
 /lib64/
 parts/
 sdist/
@@ -82,3 +83,4 @@ desktop.ini
 .cache/
 tmp/
 temp/
+tsconfig.tsbuildinfo

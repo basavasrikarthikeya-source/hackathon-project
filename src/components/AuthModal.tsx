@@ -10,8 +10,8 @@ interface AuthModalProps {
 
 export function AuthModal({ onSuccess }: AuthModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("officer@drishti.gov.in");
-  const [password, setPassword] = useState("Chakravyuh2026!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 

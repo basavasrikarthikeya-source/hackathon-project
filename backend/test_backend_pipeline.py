@@ -36,7 +36,15 @@ print("=" * 70)
 print("SATQUERY BACKEND & SUPABASE CONNECTION TEST")
 print("=" * 70)
 print(f"Supabase URL: {SB_URL}")
-print(f"Key preview:  {SB_KEY[:15]}... ({'SERVICE ROLE KEY' if 'service_role' in SB_KEY or len(SB_KEY) > 100 else 'Anon/Publishable'})")
+
+# [M-3 FIX] Guard against None key before slicing
+if not SB_KEY:
+    print("\n[FAIL] No Supabase key found.")
+    print("  Set SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment or .env.local")
+    sys.exit(1)
+
+key_type = "SERVICE ROLE KEY" if ("service_role" in SB_KEY or len(SB_KEY) > 100) else "Anon/Publishable"
+print(f"Key preview:  {SB_KEY[:15]}... ({key_type})")
 
 try:
     sb = create_client(SB_URL, SB_KEY)
