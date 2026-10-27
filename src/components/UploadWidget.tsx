@@ -5,7 +5,6 @@ import {
   UploadCloud,
   X,
   FileImage,
-  Layers,
   ArrowRightLeft,
   AlertCircle,
   History,

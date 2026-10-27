@@ -58,7 +58,7 @@ export async function triggerWorker(
 async function mockComplete(
   jobId: string,
   prompt?: string,
-  imagePaths?: string[]
+  _imagePaths?: string[]
 ): Promise<void> {
   // Realistic processing latency
   await new Promise((r) => setTimeout(r, 3500));

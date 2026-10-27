@@ -6,10 +6,7 @@ import {
   Loader2,
   AlertTriangle,
   RotateCcw,
-  CheckCircle2,
-  ExternalLink,
   ZoomIn,
-  Eye,
   ShieldAlert,
 } from "lucide-react";
 

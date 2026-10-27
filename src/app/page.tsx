@@ -168,7 +168,6 @@ export default function SatQueryDrishtiApp() {
   // Engine & Auth State
   const [session, setSession] = useState<Session | null>(null);
   const [isEngineOnline, setIsEngineOnline] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
 
   // Modals State
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -186,7 +185,6 @@ export default function SatQueryDrishtiApp() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setAuthChecked(true);
     });
 
     const {

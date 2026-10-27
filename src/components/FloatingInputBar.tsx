@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Plus, Send, Loader2 } from "lucide-react";
+import { Plus, Send, Loader2, X } from "lucide-react";
 
 interface FloatingInputBarProps {
   prompt: string;
@@ -11,6 +11,11 @@ interface FloatingInputBarProps {
   hasImages: boolean;
   onAttachFile: (file: File) => void;
   placeholder?: string;
+  beforeFile?: File | null;
+  afterFile?: File | null;
+  mode?: "interactive" | "comparison";
+  onClearBefore?: () => void;
+  onClearAfter?: () => void;
 }
 
 export function FloatingInputBar({
@@ -21,12 +26,81 @@ export function FloatingInputBar({
   hasImages,
   onAttachFile,
   placeholder,
+  beforeFile,
+  afterFile,
+  mode = "interactive",
+  onClearBefore,
+  onClearAfter,
 }: FloatingInputBarProps) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="fixed bottom-4 sm:bottom-6 left-0 right-0 px-4 sm:px-8 z-30 pointer-events-none flex flex-col items-center select-none">
       <div className="w-full max-w-3xl pointer-events-auto">
+        {/* Attachment chips indicator */}
+        {(beforeFile || afterFile) && (
+          <div className="flex flex-wrap items-center gap-2 mb-2 px-3">
+            {mode === "comparison" ? (
+              <>
+                {beforeFile ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[11px] backdrop-blur-md">
+                    <span>📷 Before (T1): {beforeFile.name.length > 20 ? beforeFile.name.slice(0, 18) + "..." : beforeFile.name}</span>
+                    {onClearBefore && (
+                      <button
+                        type="button"
+                        onClick={onClearBefore}
+                        className="hover:text-white p-0.5 cursor-pointer"
+                        title="Remove Before image"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-neutral-800/80 border border-neutral-700/50 text-neutral-400 text-[10px]">
+                    Waiting for Before (T1) image
+                  </span>
+                )}
+                {afterFile ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px] backdrop-blur-md">
+                    <span>📷 After (T2): {afterFile.name.length > 20 ? afterFile.name.slice(0, 18) + "..." : afterFile.name}</span>
+                    {onClearAfter && (
+                      <button
+                        type="button"
+                        onClick={onClearAfter}
+                        className="hover:text-white p-0.5 cursor-pointer"
+                        title="Remove After image"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-neutral-800/80 border border-neutral-700/50 text-neutral-400 text-[10px]">
+                    Waiting for After (T2) image
+                  </span>
+                )}
+              </>
+            ) : (
+              afterFile && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[11px] backdrop-blur-md">
+                  <span>📷 Attached: {afterFile.name.length > 25 ? afterFile.name.slice(0, 22) + "..." : afterFile.name}</span>
+                  {onClearAfter && (
+                    <button
+                      type="button"
+                      onClick={onClearAfter}
+                      className="hover:text-white p-0.5 cursor-pointer"
+                      title="Remove attached image"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              )
+            )}
+          </div>
+        )}
+
         <form
           onSubmit={onSubmit}
           className="relative flex items-center gap-2 p-1.5 pl-3 rounded-full bg-[#130f2c]/90 backdrop-blur-2xl border border-white/10 shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_20px_rgba(168,85,247,0.15)] focus-within:border-cyan-400/60 focus-within:ring-1 focus-within:ring-cyan-400/40 transition-all"
@@ -49,7 +123,13 @@ export function FloatingInputBar({
             type="button"
             onClick={() => hiddenInputRef.current?.click()}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 border border-white/5"
-            title="Attach or replace satellite imagery"
+            title={
+              mode === "comparison"
+                ? !beforeFile
+                  ? "Attach Before (T1) satellite imagery"
+                  : "Attach After (T2) satellite imagery"
+                : "Attach satellite imagery"
+            }
           >
             <Plus className="w-4 h-4 stroke-[2]" />
           </button>

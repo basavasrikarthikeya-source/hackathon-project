@@ -7,7 +7,6 @@ import {
   Droplets,
   Trees,
   X,
-  Layers,
   ArrowRightLeft,
   CheckCircle2,
 } from "lucide-react";

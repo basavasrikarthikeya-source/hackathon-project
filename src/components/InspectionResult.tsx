@@ -7,12 +7,8 @@ import {
   RotateCcw,
   ZoomIn,
   Download,
-  Share2,
-  Layers,
   CheckCircle2,
-  ExternalLink,
   ShieldAlert,
-  ArrowRightLeft,
   X,
 } from "lucide-react";
 import { Inspection } from "@/types/drishti";

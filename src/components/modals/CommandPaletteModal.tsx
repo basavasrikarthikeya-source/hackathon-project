@@ -12,7 +12,6 @@ import {
   Droplets,
   Trees,
   X,
-  Radio,
 } from "lucide-react";
 
 interface CommandPaletteModalProps {

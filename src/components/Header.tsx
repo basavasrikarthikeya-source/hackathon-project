@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { User, LogOut, Radio, Database, Globe } from "lucide-react";
+import { User, LogOut, Radio, Globe } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface HeaderProps {
