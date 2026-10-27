@@ -1001,7 +1001,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             visibility: 'hidden',
             backfaceVisibility: 'hidden',
           }}
-          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-24 pb-8 will-change-[transform,opacity,filter]"
+          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-28 md:pt-32 pb-8 will-change-[transform,opacity,filter]"
         >
           {/* Centered CTA */}
           <div className="my-auto text-center flex flex-col items-center">
@@ -1037,18 +1037,26 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
           {/* Clean Footer with Logo */}
           <footer className="w-full pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-slate-400 select-none">
-            <div className="flex items-center gap-3">
-              <Logo size={32} />
-              <span className="font-heading font-bold text-sm text-white/90">
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-3.5 group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22D3EE] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070F] p-1 -m-1"
+              aria-label="Back to top"
+            >
+              <Logo variant="footer" />
+              <span className="font-heading font-semibold text-base text-white/90 group-hover:text-cyan-300 transition-colors whitespace-nowrap leading-none">
                 Drishti
               </span>
-              <span className="text-slate-500">•</span>
-              <span className="text-slate-400 font-mono text-[11px]">
-                Satellite & Geospatial Intelligence
-              </span>
-            </div>
+            </a>
 
             <div className="flex items-center gap-4 text-slate-400 text-xs">
+              <span className="text-slate-500 hidden sm:inline">•</span>
+              <span className="text-slate-400 font-mono text-[11px] hidden sm:inline">
+                Satellite & Geospatial Intelligence
+              </span>
               <span>Evidence, not guesses.</span>
               <span>© {new Date().getFullYear()} Drishti</span>
             </div>

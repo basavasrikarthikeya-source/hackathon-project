@@ -7,6 +7,15 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+html {
+  scroll-padding-top: var(--header-height, 80px);
+}
+@media (max-width: 767px) {
+  html {
+    scroll-padding-top: var(--header-height-sm, 72px);
+  }
+}
+
 html.lenis, html.lenis body {
   height: auto;
 }
@@ -33,6 +42,20 @@ video, canvas {
 }
 
 :root {
+  /* Drishti Logo Sizing Variables */
+  --logo-header: 60px;
+  --logo-header-sm: 48px;
+  --logo-footer: 44px;
+  --logo-sidebar: 48px;
+  --logo-rail: 40px;
+  --logo-chat: 44px;
+  --logo-hero: 72px;
+
+  /* Header & Navigation Heights */
+  --header-height: 80px;
+  --header-height-sm: 72px;
+  --chat-header-height: 64px;
+
   --bg-fallback: #05070F;
   --scrim: rgba(4, 6, 16, 0.62);
   --surface: rgba(8, 12, 26, 0.86);   /* composer, popovers, modals ONLY */
