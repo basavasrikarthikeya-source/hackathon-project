@@ -22,15 +22,14 @@ import {
 export const SCRUB = {
   SCROLL_LENGTH_VH: 800,        // total scroll distance driving the video (desktop)
   MOBILE_SCROLL_LENGTH_VH: 500, // total scroll distance driving the video (mobile)
-  SMOOTHING_MS: 1400,           // smoothing time constant (~1.4s ease)
-  LERP_FACTOR: 0.045,           // per-frame easing (smaller = smoother)
-  SECTION_FADE_MS: 1200,        // crossfade between content chapters
-  MAX_SEEK_STEP_S: 0.12,        // maximum seek step delta per frame
-  FPS: 30,                      // frame rate for frame-grid quantisation
-  WHEEL_MULTIPLIER: 0.8,        // Lenis wheel input multiplier
-  LENIS_DURATION: 1.6,          // Lenis smoothing duration in seconds
+  SMOOTHING_MS: 1200,           // smoothing time constant (~1.2s ease)
+  LERP_FACTOR: 0.09,            // per-frame easing (responsive and silky smooth)
+  SECTION_FADE_MS: 1000,        // crossfade between content chapters
+  FPS: 24,                      // frame rate matching source video (24 fps)
+  WHEEL_MULTIPLIER: 0.9,        // Lenis wheel input multiplier
+  LENIS_DURATION: 1.2,          // Lenis smoothing duration in seconds
   MODE: 'video' as 'video' | 'frames', // 'video' (HTML5 video) or 'frames' (canvas image sequence)
-  TOTAL_FRAMES: 240,            // Total extracted frames for 'frames' mode
+  TOTAL_FRAMES: 164,            // Total extracted frames for 'frames' mode
 };
 
 interface AboutPageProps {
@@ -67,7 +66,10 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [logoError, setLogoError] = useState(false);
-  const [videoSource, setVideoSource] = useState('/assets/back.mp4');
+  const [videoSource, setVideoSource] = useState(() => {
+    if (typeof window === 'undefined') return '/earth-scrub.mp4';
+    return window.innerWidth < 768 ? '/earth-scrub-mobile.mp4' : '/earth-scrub.mp4';
+  });
 
   // Check URL query param ?debug=1
   const [showDebug] = useState(() => {
@@ -77,17 +79,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
   // Detect mobile, reduced motion, and runtime video source
   useEffect(() => {
-    const checkMobile = () => {
+    const updateDimensionsAndSource = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      // Try to load earth-scrub-mobile.mp4 if mobile, else earth-scrub.mp4
-      // Fallback gracefully to /assets/back.mp4 if not yet generated
-      const testImg = new Image();
-      testImg.src = mobile ? '/earth-scrub-mobile.mp4' : '/earth-scrub.mp4';
-      // Default to /assets/back.mp4 initially unless earth-scrub exists
+      const preferred = mobile ? '/earth-scrub-mobile.mp4' : '/earth-scrub.mp4';
+      setVideoSource((current) => (current === '/assets/back.mp4' ? current : preferred));
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    updateDimensionsAndSource();
+    window.addEventListener('resize', updateDimensionsAndSource);
 
     const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(mqMotion.matches);
@@ -95,7 +94,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     mqMotion.addEventListener('change', motionHandler);
 
     return () => {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', updateDimensionsAndSource);
       mqMotion.removeEventListener('change', motionHandler);
     };
   }, []);
@@ -142,9 +141,43 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     lenisRef.current = lenis;
 
     let currentVideoTime = 0;
+    let isSeeking = false;
+    let pendingSeekTime: number | null = null;
     let lastSeekTime = 0;
     let lastSeekInterval = 0;
     let rafId: number;
+
+    const performSeek = (targetSec: number) => {
+      if (!video || !isFinite(video.duration) || video.duration <= 0 || video.readyState < 2) {
+        return;
+      }
+      const clamped = Math.max(0, Math.min(video.duration, targetSec));
+
+      if (isSeeking || video.seeking) {
+        pendingSeekTime = clamped;
+        return;
+      }
+
+      const diff = Math.abs(clamped - video.currentTime);
+      if (diff >= (0.35 / SCRUB.FPS)) {
+        isSeeking = true;
+        const now = performance.now();
+        if (lastSeekTime > 0) {
+          lastSeekInterval = now - lastSeekTime;
+        }
+        lastSeekTime = now;
+        video.currentTime = clamped;
+      }
+    };
+
+    const handleSeeked = () => {
+      isSeeking = false;
+      if (pendingSeekTime !== null) {
+        const next = pendingSeekTime;
+        pendingSeekTime = null;
+        performSeek(next);
+      }
+    };
 
     const handleLoaded = () => {
       setVideoReady(true);
@@ -154,12 +187,22 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     if (video) {
       video.addEventListener('loadedmetadata', handleLoaded);
       video.addEventListener('canplay', handleLoaded);
+      video.addEventListener('seeked', handleSeeked);
       if (video.readyState >= 1) {
         handleLoaded();
       }
     }
 
-    // Direct chapter opacity & transform calculator (zero CSS transition fighting, zero React re-renders)
+    /**
+     * Quintic smootherstep easing function (C2 continuous: zero velocity & zero acceleration at boundaries):
+     * S(t) = 6t^5 - 15t^4 + 10t^3
+     */
+    const smootherstep = (t: number): number => {
+      const c = Math.max(0, Math.min(1, t));
+      return c * c * c * (c * (c * 6 - 15) + 10);
+    };
+
+    // Direct chapter opacity & transform calculator with smootherstep easing and micro-scale
     const updateChapter = (
       el: HTMLDivElement | null,
       progress: number,
@@ -170,29 +213,52 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     ) => {
       if (!el) return;
       let opacity = 0;
-      let translateY = 20;
+      let translateY = 28;
+      let scale = 0.975;
+      let blurPx = 0;
 
       if (progress >= start && progress <= end) {
         if (progress < peakStart) {
-          const f = (progress - start) / (peakStart - start);
+          // Entering: smootherstep ease-in-out
+          const f = smootherstep((progress - start) / (peakStart - start));
           opacity = f;
-          translateY = 20 * (1 - f);
+          translateY = 28 * (1 - f);
+          scale = 0.975 + 0.025 * f;
+          blurPx = (1 - f) * 4;
         } else if (progress <= peakEnd) {
+          // Full peak visibility
           opacity = 1;
           translateY = 0;
+          scale = 1.0;
+          blurPx = 0;
         } else {
-          const f = (progress - peakEnd) / (end - peakEnd);
+          // Exiting: smootherstep ease-in-out
+          const f = smootherstep((progress - peakEnd) / (end - peakEnd));
           opacity = 1 - f;
-          translateY = -20 * f;
+          translateY = -24 * f;
+          scale = 1.0 + 0.018 * f;
+          blurPx = f * 4;
         }
       } else if (progress > end) {
         opacity = 0;
-        translateY = -20;
+        translateY = -24;
+        scale = 1.018;
+        blurPx = 4;
+      } else {
+        opacity = 0;
+        translateY = 28;
+        scale = 0.975;
+        blurPx = 4;
       }
 
       el.style.opacity = opacity.toFixed(3);
-      el.style.transform = `translate3d(0, ${translateY.toFixed(1)}px, 0)`;
-      el.style.pointerEvents = opacity > 0.08 ? 'auto' : 'none';
+      el.style.transform = `translate3d(0, ${translateY.toFixed(1)}px, 0) scale3d(${scale.toFixed(4)}, ${scale.toFixed(4)}, 1)`;
+      if (blurPx > 0.1 && opacity < 0.95) {
+        el.style.filter = `blur(${blurPx.toFixed(1)}px)`;
+      } else {
+        el.style.filter = 'none';
+      }
+      el.style.pointerEvents = opacity > 0.1 ? 'auto' : 'none';
       el.style.visibility = opacity > 0.005 ? 'visible' : 'hidden';
     };
 
@@ -269,53 +335,31 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       // Read normalized scroll progress directly from Lenis (no getBoundingClientRect or DOM reads)
       const progress = lenis.limit > 0 ? Math.min(Math.max(lenis.scroll / lenis.limit, 0), 1) : 0;
 
-      // 2. Video mode scrubbing (Step 3: Seek-gated scrubbing)
+      // 2. Video mode scrubbing (Seek-queueing with 0ms All-Intra seek response)
       let targetTime = 0;
       if (SCRUB.MODE === 'video' && video && isFinite(video.duration) && video.duration > 0) {
-        // target = progress * video.duration
         targetTime = progress * video.duration;
 
-        // current += (target - current) * SCRUB.LERP_FACTOR
+        // Smooth responsive interpolation towards target time
         currentVideoTime += (targetTime - currentVideoTime) * SCRUB.LERP_FACTOR;
 
-        // quantise to the frame grid: t = Math.round(current * FPS) / FPS
-        const t = Math.round(currentVideoTime * SCRUB.FPS) / SCRUB.FPS;
+        // Quantise to frame grid
+        const quantisedTime = Math.round(currentVideoTime * SCRUB.FPS) / SCRUB.FPS;
+        performSeek(quantisedTime);
 
-        // ONLY set video.currentTime when ALL are true:
-        // !video.seeking, readyState >= 2, and |video.currentTime - t| >= 0.5/FPS
-        const diff = t - video.currentTime;
-        if (!video.seeking && video.readyState >= 2 && Math.abs(diff) >= (0.5 / SCRUB.FPS)) {
-          // clamp each step with SCRUB.MAX_SEEK_STEP_S
-          const step = Math.sign(diff) * Math.min(Math.abs(diff), SCRUB.MAX_SEEK_STEP_S);
-          const nextTime = Math.max(0, Math.min(video.duration, video.currentTime + step));
-
-          const now = performance.now();
-          if (lastSeekTime > 0) {
-            lastSeekInterval = now - lastSeekTime;
-          }
-          lastSeekTime = now;
-
-          // use video.fastSeek(t) when it exists, otherwise currentTime = t
-          if (typeof (video as any).fastSeek === 'function') {
-            (video as any).fastSeek(nextTime);
-          } else {
-            video.currentTime = nextTime;
-          }
-        }
-
-        // Slow zoom (scale 1.0 to 1.06)
-        const scale = 1.0 + progress * 0.06;
-        video.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
+        // Slow cinematic zoom (scale 1.0 to 1.05)
+        const scale = 1.0 + progress * 0.05;
+        video.style.transform = `scale3d(${scale.toFixed(4)}, ${scale.toFixed(4)}, 1)`;
       } else if (SCRUB.MODE === 'frames') {
         // Step 4: Canvas Image Sequence
         drawCanvasFrame(progress);
       }
 
-      // 3. Direct DOM style updates for chapters (zero React re-renders, zero CSS transition conflicts)
-      updateChapter(ch0Ref.current, progress, 0.00, 0.00, 0.17, 0.27);
-      updateChapter(ch1Ref.current, progress, 0.20, 0.28, 0.42, 0.50);
-      updateChapter(ch2Ref.current, progress, 0.44, 0.52, 0.66, 0.74);
-      updateChapter(ch3Ref.current, progress, 0.68, 0.76, 0.88, 0.94);
+      // 3. Direct DOM style updates for chapters (with smootherstep easing & seamless crossfades)
+      updateChapter(ch0Ref.current, progress, 0.00, 0.00, 0.14, 0.26);
+      updateChapter(ch1Ref.current, progress, 0.16, 0.27, 0.42, 0.52);
+      updateChapter(ch2Ref.current, progress, 0.44, 0.54, 0.66, 0.76);
+      updateChapter(ch3Ref.current, progress, 0.68, 0.78, 0.88, 0.95);
       updateChapter(ch4Ref.current, progress, 0.88, 0.95, 1.00, 1.00);
 
       // 4. Update Step 0 Debug Overlay (zero React re-renders)
@@ -354,6 +398,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       if (video) {
         video.removeEventListener('loadedmetadata', handleLoaded);
         video.removeEventListener('canplay', handleLoaded);
+        video.removeEventListener('seeked', handleSeeked);
       }
     };
   }, [reducedMotion, showDebug]);
@@ -465,63 +510,24 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden z-10 px-4 sm:px-6 lg:px-8">
         
         {/* =================================================================
-            CHAPTER 1: HERO
+            CHAPTER 1: HERO (ONLY "DRISHTI" DISPLAYED AT THE START)
             ================================================================= */}
         <div
           ref={ch0Ref}
-          style={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
-          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto will-change-transform"
+          style={{
+            opacity: 1,
+            transform: 'translate3d(0, 0px, 0) scale3d(1, 1, 1)',
+            backfaceVisibility: 'hidden',
+          }}
+          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto will-change-[transform,opacity,filter]"
         >
-          {/* Soft local radial vignette behind text for legibility (max 35% opacity) */}
-          <div
-            className="absolute w-[600px] h-[360px] rounded-full pointer-events-none -z-10"
-            style={{
-              background: 'radial-gradient(ellipse at center, rgba(2,4,10,0.35) 0%, rgba(2,4,10,0.15) 55%, transparent 75%)',
-            }}
-          />
-
-          {/* Eyebrow */}
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium mb-5 select-none">
-            GEOSPATIAL INTELLIGENCE
-          </span>
-
-          {/* Big Headline */}
+          {/* DRISHTI Title */}
           <h1
-            className="font-heading font-bold text-white/95 tracking-[-0.02em] leading-[1.08] mb-6 drop-shadow-md"
-            style={{ fontSize: 'clamp(2.75rem, 6vw, 5rem)' }}
+            className="font-heading font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-b from-white via-cyan-100 to-[#22D3EE] drop-shadow-[0_0_80px_rgba(34,211,238,0.6)] select-none"
+            style={{ fontSize: 'clamp(4rem, 12vw, 9.5rem)' }}
           >
-            See the Earth.{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-[#22D3EE]">
-              Question it.
-            </span>{' '}
-            Trust the answer.
+            DRISHTI
           </h1>
-
-          {/* One-line Subtext */}
-          <p className="font-sans text-[17px] sm:text-[18px] leading-[1.7] text-[#C9D3EA] max-w-[60ch] mx-auto mb-10 drop-shadow">
-            Upload satellite imagery, ask in plain English, and get answers with pixel-precise evidence and an honest verdict. Drishti tells you when it does not know.
-          </p>
-
-          {/* Action Row: ONE primary button + ONE subtle secondary link */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <button
-              type="button"
-              onClick={() => onNavigate('/chat')}
-              className="px-8 py-4 rounded-[20px] text-base font-semibold text-slate-950 bg-[#22D3EE] hover:bg-[#67e8f9] shadow-[0_0_30px_rgba(34,211,238,0.45)] transition-all flex items-center justify-center gap-3 active:scale-95 group"
-            >
-              <span>Launch Studio</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              type="button"
-              onClick={scrollToHowItWorks}
-              className="relative text-sm font-medium text-slate-300 hover:text-white transition-colors group py-1"
-            >
-              <span>See how it works</span>
-              <span className="absolute bottom-0 left-0 w-0 h-[1.5px] bg-[#22D3EE] transition-all duration-300 group-hover:w-full" />
-            </button>
-          </div>
         </div>
 
         {/* =================================================================
@@ -530,8 +536,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             ================================================================= */}
         <div
           ref={ch1Ref}
-          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
+          style={{
+            opacity: 0,
+            transform: 'translate3d(0, 28px, 0) scale3d(0.975, 0.975, 1)',
+            visibility: 'hidden',
+            backfaceVisibility: 'hidden',
+          }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-[transform,opacity,filter]"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">
@@ -626,8 +637,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             ================================================================= */}
         <div
           ref={ch2Ref}
-          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
+          style={{
+            opacity: 0,
+            transform: 'translate3d(0, 28px, 0) scale3d(0.975, 0.975, 1)',
+            visibility: 'hidden',
+            backfaceVisibility: 'hidden',
+          }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-[transform,opacity,filter]"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">
@@ -690,8 +706,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             ================================================================= */}
         <div
           ref={ch3Ref}
-          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
+          style={{
+            opacity: 0,
+            transform: 'translate3d(0, 28px, 0) scale3d(0.975, 0.975, 1)',
+            visibility: 'hidden',
+            backfaceVisibility: 'hidden',
+          }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-[transform,opacity,filter]"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppMode } from '../types';
-import { useTheme } from '../context/ThemeContext';
 import { ThemeSelector } from './ThemeSelector';
-import { SplitSquareVertical, MessageSquareText, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface NavbarProps {
   currentRoute: '/' | '/chat';
@@ -17,30 +16,27 @@ export const Navbar: React.FC<NavbarProps> = ({
   mode = 'interactive',
   onModeChange
 }) => {
-  const { themeConfig } = useTheme();
   const [isScrolled, setIsScrolled] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
-    if (currentRoute !== '/') {
-      setIsScrolled(true);
-      return;
-    }
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
+      setIsScrolled(window.scrollY > 20);
     };
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [currentRoute]);
 
-  // ON ABOUT PAGE: Transparent at top, thin blurred glass bar after ~40px scroll
+  // ==========================================
+  // ON ABOUT PAGE ("/")
+  // ==========================================
   if (currentRoute === '/') {
     return (
       <header
         className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
           isScrolled
-            ? 'bg-[#02040A]/75 backdrop-blur-md border-b border-white/10 shadow-lg py-3'
+            ? 'bg-[#02040A]/80 backdrop-blur-md border-b border-white/10 shadow-lg py-3'
             : 'bg-transparent border-b border-transparent py-5'
         }`}
       >
@@ -57,10 +53,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 src="/logo.png"
                 alt="Drishti Logo"
                 onError={() => setLogoError(true)}
-                className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
+                className="h-9 sm:h-10 w-auto object-contain rounded-[10px] transition-transform group-hover:scale-105"
               />
             ) : (
-              /* TODO: Add logo at /public/logo.png or /public/logo.svg */
               <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-xs font-mono text-cyan-400">
                 D
               </div>
@@ -70,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </button>
 
-          {/* Right: Small "Launch Studio" button (No /chat chip, no version, no palette toggle) */}
+          {/* Right: Small "Launch Studio" button */}
           <button
             type="button"
             onClick={() => onNavigate('/chat')}
@@ -84,105 +79,84 @@ export const Navbar: React.FC<NavbarProps> = ({
     );
   }
 
-  // ON CHAT PAGE: Preserved untouched functionality for /chat
+  // ==========================================
+  // ON CHAT PAGE ("/chat")
+  // 56px, solid #05070F, no border until scrolled
+  // ==========================================
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-950/80 backdrop-blur-xl transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Brand Logo -> Links back to About */}
+    <header
+      className={`sticky top-0 z-40 w-full h-14 bg-[#05070F] transition-colors ${
+        isScrolled ? 'border-b border-[#151D33]' : 'border-b border-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4">
+        {/* Left: Logo and name "Drishti" (V2.4 badge removed) */}
         <button
           type="button"
           onClick={() => onNavigate('/')}
           className="flex items-center gap-3 group text-left transition-transform active:scale-95"
+          aria-label="Back to Drishti Home"
         >
           {!logoError ? (
             <img
               src="/logo.png"
               alt="Drishti Logo"
               onError={() => setLogoError(true)}
-              className="h-9 w-auto object-contain"
+              className="h-8 sm:h-9 w-auto object-contain rounded-[10px] transition-transform group-hover:scale-105"
             />
           ) : (
-            <div className="h-9 w-9 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-xs font-mono text-cyan-400">
+            <div className="h-8 w-8 rounded-lg border border-[#151D33] bg-[#0A0F1D] flex items-center justify-center text-xs font-mono text-[#22D3EE]">
               D
             </div>
           )}
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg sm:text-xl tracking-tight text-white group-hover:text-cyan-300 transition-colors">
-                Drishti
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-widest hidden sm:inline-block">
-                v2.4
-              </span>
-            </div>
-            <div className="text-[10px] font-mono text-slate-400 -mt-1 hidden xs:block">
-              Evidence, not guesses.
-            </div>
-          </div>
+          <span className="font-heading font-semibold text-lg sm:text-xl text-[#E8EEFC] tracking-[-0.01em] group-hover:text-[#22D3EE] transition-colors">
+            Drishti
+          </span>
         </button>
 
-        {/* Center: Segmented Mode Switcher (Visible on Chat page) */}
+        {/* Centre: Mode switcher compact segmented control */}
         {onModeChange && (
-          <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 shadow-inner relative">
+          <div className="relative flex items-center bg-[#0A0F1D] p-1 rounded-full border border-[#151D33]">
+            {/* Sliding active indicator */}
+            <div
+              className="absolute top-1 bottom-1 rounded-full bg-[rgba(34,211,238,0.12)] transition-all duration-200 ease-out pointer-events-none"
+              style={{
+                left: mode === 'interactive' ? '4px' : 'calc(50% + 2px)',
+                width: 'calc(50% - 6px)'
+              }}
+            />
             <button
               type="button"
               onClick={() => onModeChange('interactive')}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 z-10 ${
+              className={`relative z-10 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 mode === 'interactive'
-                  ? 'text-white font-semibold shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'text-[#22D3EE] font-semibold'
+                  : 'text-[#8A97B8] hover:text-[#E8EEFC]'
               }`}
             >
-              <MessageSquareText
-                className="w-3.5 h-3.5"
-                style={{ color: mode === 'interactive' ? themeConfig.primaryHex : undefined }}
-              />
-              <span>Interactive</span>
-              {mode === 'interactive' && (
-                <span
-                  className="absolute inset-0 rounded-lg -z-10 shadow-sm border border-white/10"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    borderColor: themeConfig.primaryHex
-                  }}
-                />
-              )}
+              Interactive
             </button>
-
             <button
               type="button"
               onClick={() => onModeChange('comparison')}
-              className={`relative flex items-center gap-2 px-3.5 sm:px-5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 z-10 ${
+              className={`relative z-10 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 mode === 'comparison'
-                  ? 'text-white font-semibold shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'text-[#22D3EE] font-semibold'
+                  : 'text-[#8A97B8] hover:text-[#E8EEFC]'
               }`}
             >
-              <SplitSquareVertical
-                className="w-3.5 h-3.5"
-                style={{ color: mode === 'comparison' ? themeConfig.primaryHex : undefined }}
-              />
-              <span>Comparison</span>
-              {mode === 'comparison' && (
-                <span
-                  className="absolute inset-0 rounded-lg -z-10 shadow-sm border border-white/10"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    borderColor: themeConfig.primaryHex
-                  }}
-                />
-              )}
+              Comparison
             </button>
           </div>
         )}
 
-        {/* Right side controls on Chat page */}
-        <div className="flex items-center gap-2.5">
+        {/* Right: "About Drishti" as plain text link + ONE theme control */}
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => onNavigate('/')}
-            className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-white/10 transition-colors"
+            className="text-xs sm:text-sm font-medium text-[#8A97B8] hover:text-[#E8EEFC] transition-colors"
           >
             About Drishti
           </button>
