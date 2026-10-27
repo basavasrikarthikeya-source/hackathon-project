@@ -9,10 +9,10 @@
 ## 1. What You Receive from Backend
 On integration day / demo rehearsal, the Kaggle worker will provide:
 1. **The Gradio Tunnel URL**:  
-   Example: `https://a1b2c3d4e5f6.gradio.live`  
+   Active Tunnel URL: `https://021f5c525cab3de000.gradio.live`  
    Set this in your Vercel / `.env.local` as:
    ```env
-   NEXT_PUBLIC_GRADIO_URL=https://a1b2c3d4e5f6.gradio.live
+   NEXT_PUBLIC_GRADIO_URL=https://021f5c525cab3de000.gradio.live
    ```
    *(During development without GPU, use `NEXT_PUBLIC_GRADIO_URL=mock`)*.
 
