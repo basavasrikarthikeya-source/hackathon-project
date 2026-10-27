@@ -23,6 +23,11 @@ html.lenis, html.lenis body {
   pointer-events: none;
 }
 
+/* High-clarity hardware-accelerated video & canvas rasterization */
+video, canvas {
+  image-rendering: -webkit-optimize-contrast;
+}
+
 :root, [data-theme="orbit"] {
   --bg: #05070F;
   --surface: #0A0F1D;

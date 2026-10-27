@@ -40,6 +40,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const hdVideoRef = useRef<HTMLVideoElement>(null);
+  const heroPosterRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
 
@@ -64,14 +65,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const framesCacheRef = useRef<Map<number, HTMLImageElement>>(new Map());
   const lastDrawnFrameRef = useRef<number>(-1);
 
-  const [previewReady, setPreviewReady] = useState(false);
-  const [hdReady, setHdReady] = useState(false);
-  const isHdActiveRef = useRef(false);
-  const [isHdActive, setIsHdActive] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-
   // Progressive quality: Serve 1080p HD to all desktops and tablets.
   // Serve 1280 preview/mobile ONLY when screen < 768px, saveData is on, or connection is 2G
   const [shouldLoadHd, setShouldLoadHd] = useState(() => {
@@ -81,6 +74,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     const isSlowConnection = ['2g', 'slow-2g'].includes((navigator as any)?.connection?.effectiveType);
     return !isMobileViewport && !isSaveData && !isSlowConnection;
   });
+
+  const [previewReady, setPreviewReady] = useState(false);
+  const [hdReady, setHdReady] = useState(false);
+  const isHdActiveRef = useRef(true);
+  const [isHdActive, setIsHdActive] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   // Check URL query param ?debug=1
   const [showDebug] = useState(() => {
@@ -171,11 +172,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     let rafId: number;
 
     const performSeek = (targetSec: number) => {
-      const activeVideo = (isHdActiveRef.current && hdVideoRef.current && hdVideoRef.current.readyState >= 2)
+      const activeVideo = (shouldLoadHd && hdVideoRef.current && hdVideoRef.current.readyState >= 1)
         ? hdVideoRef.current
-        : previewVideoRef.current;
+        : (previewVideoRef.current || hdVideoRef.current);
 
-      if (!activeVideo || !isFinite(activeVideo.duration) || activeVideo.duration <= 0 || activeVideo.readyState < 2) {
+      if (!activeVideo || !isFinite(activeVideo.duration) || activeVideo.duration <= 0 || activeVideo.readyState < 1) {
+        pendingSeekTime = targetSec;
         return;
       }
       const clamped = Math.max(0, Math.min(activeVideo.duration, targetSec));
@@ -195,13 +197,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
         lastSeekTime = now;
         activeVideo.currentTime = clamped;
       }
-
-      // If HD video is buffering in background, keep its playhead synced
-      if (!isHdActiveRef.current && hdVideoRef.current && hdVideoRef.current.readyState >= 3 && !hdVideoRef.current.seeking) {
-        if (Math.abs(hdVideoRef.current.currentTime - clamped) >= (0.5 / SCRUB.FPS)) {
-          hdVideoRef.current.currentTime = clamped;
-        }
-      }
     };
 
     const handleSeeked = () => {
@@ -215,14 +210,27 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
     const handlePreviewLoaded = () => {
       setPreviewReady(true);
-      if (previewVideoRef.current) previewVideoRef.current.pause();
+      if (previewVideoRef.current) {
+        previewVideoRef.current.pause();
+        if (pendingSeekTime !== null) {
+          const next = pendingSeekTime;
+          pendingSeekTime = null;
+          performSeek(next);
+        }
+      }
     };
 
     const handleHdLoaded = () => {
       setHdReady(true);
       if (hdVideoRef.current) {
         hdVideoRef.current.pause();
-        hdVideoRef.current.currentTime = currentVideoTime;
+        if (pendingSeekTime !== null) {
+          const next = pendingSeekTime;
+          pendingSeekTime = null;
+          performSeek(next);
+        } else {
+          hdVideoRef.current.currentTime = currentVideoTime;
+        }
       }
     };
 
@@ -399,9 +407,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       // 2. Video mode scrubbing (Seek-queueing with 0ms All-Intra seek response)
       let targetTime = 0;
       if (SCRUB.MODE === 'video') {
-        const activeVid = (isHdActiveRef.current && hdVideoRef.current && hdVideoRef.current.readyState >= 2)
+        const activeVid = (shouldLoadHd && hdVideoRef.current)
           ? hdVideoRef.current
-          : previewVideoRef.current;
+          : (previewVideoRef.current || hdVideoRef.current);
 
         if (activeVid && isFinite(activeVid.duration) && activeVid.duration > 0) {
           targetTime = progress * activeVid.duration;
@@ -416,12 +424,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           // NOTE: NO transform: scale on video element (preserves 1:1 pixel sharpness)!
         }
 
-        // Progressive HD swap: when HD is loaded in background (readyState >= 3) and times align, activate HD seamlessly
-        if (shouldLoadHd && !isHdActiveRef.current && hdVideoRef.current && hdVideoRef.current.readyState >= 3) {
-          if (Math.abs(hdVideoRef.current.currentTime - currentVideoTime) < 0.05) {
-            isHdActiveRef.current = true;
-            setIsHdActive(true);
-          }
+        // Frame 0 Hero Sharpness: keep 100% sharp at progress 0, smoothly crossfade into scrub video
+        if (heroPosterRef.current) {
+          const posterOpacity = Math.max(0, 1 - progress * 25);
+          heroPosterRef.current.style.opacity = posterOpacity.toFixed(3);
+          heroPosterRef.current.style.visibility = posterOpacity > 0.005 ? 'visible' : 'hidden';
         }
       } else if (SCRUB.MODE === 'frames') {
         // Step 4: Canvas Image Sequence
@@ -437,7 +444,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
       // 4. Update Step 0 Debug Overlay (zero React re-renders)
       if (showDebug) {
-        const activeVid = (isHdActiveRef.current && hdVideoRef.current) ? hdVideoRef.current : previewVideoRef.current;
+        const activeVid = (shouldLoadHd && hdVideoRef.current) ? hdVideoRef.current : (previewVideoRef.current || hdVideoRef.current);
         if (debugProgressRef.current) {
           debugProgressRef.current.textContent = (progress * 100).toFixed(1) + '%';
         }
@@ -466,13 +473,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           debugMsBetweenSeeksRef.current.textContent = lastSeekInterval > 0 ? `${lastSeekInterval.toFixed(0)}ms` : 'idle';
         }
         if (debugVariantRef.current) {
-          const name = isHdActiveRef.current
-            ? '1080p HD (Active)'
-            : shouldLoadHd
-            ? '1280p Preview (HD buffering...)'
+          const name = shouldLoadHd
+            ? '1080p HD (Direct)'
             : '1280p Mobile / Data Saver (Active)';
           debugVariantRef.current.textContent = name;
-          debugVariantRef.current.className = isHdActiveRef.current ? 'font-bold text-emerald-400' : 'font-bold text-cyan-300';
+          debugVariantRef.current.className = 'font-bold text-emerald-400';
         }
       }
 
@@ -530,32 +535,31 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           />
         ) : (
           <div className="relative w-full h-full">
-            {/* Layer 1: Preview / Mobile Video (1280x720 All-Intra 24fps, instantaneous start) */}
-            <video
-              ref={previewVideoRef}
-              src="/earth-scrub-preview.mp4"
-              poster="/assets/earth-horizon.png"
-              muted
-              playsInline
-              preload="auto"
-              disablePictureInPicture
-              onError={() => {
-                if (previewVideoRef.current && previewVideoRef.current.src !== '/assets/back.mp4') {
-                  previewVideoRef.current.src = '/assets/back.mp4';
-                }
-              }}
-              className="absolute inset-0 w-full h-full object-cover object-center"
-              style={{
-                opacity: previewReady ? 1 : 0,
-                transition: 'opacity 300ms ease',
-              }}
-            />
+            {/* Layer 1: Mobile / Data-Saver Stream (1280x720 All-Intra 24fps) */}
+            {!shouldLoadHd && (
+              <video
+                ref={previewVideoRef}
+                src="/earth-scrub-preview.mp4"
+                poster="/assets/earth-horizon.png"
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                className="absolute inset-0 w-full h-full object-cover object-center"
+                style={{
+                  opacity: previewReady ? 1 : 0,
+                  transition: 'opacity 300ms ease',
+                  imageRendering: '-webkit-optimize-contrast',
+                }}
+              />
+            )}
 
-            {/* Layer 2: Full 1080p HD Video (1920x1080 All-Intra 24fps CRF 15, background loaded) */}
+            {/* Layer 2: Full 1080p HD Video (1920x1080 All-Intra 24fps CRF 15, desktop & tablet) */}
             {shouldLoadHd && (
               <video
                 ref={hdVideoRef}
                 src="/earth-scrub-1080.mp4"
+                poster="/assets/earth-horizon.png"
                 muted
                 playsInline
                 preload="auto"
@@ -566,11 +570,24 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                 }}
                 className="absolute inset-0 w-full h-full object-cover object-center"
                 style={{
-                  opacity: isHdActive ? 1 : 0,
-                  transition: 'opacity 400ms ease',
+                  opacity: hdReady ? 1 : 0,
+                  transition: 'opacity 300ms ease',
+                  imageRendering: '-webkit-optimize-contrast',
                 }}
               />
             )}
+
+            {/* Layer 3: Razor-sharp 1080p Frame 0 Poster Image - guarantees instant pin-sharp clarity from 0th millisecond */}
+            <img
+              ref={heroPosterRef}
+              src="/assets/earth-horizon.png"
+              alt="Earth orbital horizon"
+              className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none will-change-[opacity]"
+              style={{
+                opacity: 1,
+                imageRendering: '-webkit-optimize-contrast',
+              }}
+            />
           </div>
         )}
       </div>
