@@ -145,6 +145,8 @@ export function InspectionResult({
             <img
               src={currentDisplayUrl || "/mock/marked_sample.png"}
               alt="Satellite Analysis Display"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/mock/marked_sample.png";

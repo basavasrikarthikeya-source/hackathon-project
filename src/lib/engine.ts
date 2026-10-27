@@ -13,8 +13,8 @@ export async function engineOnline(): Promise<boolean> {
     await Client.connect(url);
     return true;
   } catch {
-    // If Gradio tunnel is offline/expired, system automatically falls back to simulation
-    return true;
+    // Gradio tunnel is offline or unreachable
+    return false;
   }
 }
 
@@ -35,18 +35,22 @@ export async function triggerWorker(
   try {
     const { Client } = await import("@gradio/client");
     const app = await Client.connect(url);
-    // Gradio Interface defaults fn to "/process", but custom Blocks can be "/predict"
+    // Locked contract specifies /predict as the primary route, with /process as fallback
     try {
-      await app.predict("/process", [jobId, prompt, imagePaths]);
-    } catch {
       await app.predict("/predict", [jobId, prompt, imagePaths]);
+    } catch {
+      await app.predict("/process", [jobId, prompt, imagePaths]);
     }
   } catch (err) {
     console.warn(
       "Gradio worker unreachable or expired tunnel. Falling back to simulation mode:",
       err
     );
-    return mockComplete(jobId, prompt, imagePaths);
+    return mockComplete(
+      jobId,
+      `[AI ENGINE OFFLINE FALLBACK] ${prompt}`,
+      imagePaths
+    );
   }
 }
 
@@ -58,7 +62,7 @@ export async function triggerWorker(
 async function mockComplete(
   jobId: string,
   prompt?: string,
-  _imagePaths?: string[]
+  imagePaths?: string[]
 ): Promise<void> {
   // Realistic processing latency
   await new Promise((r) => setTimeout(r, 3500));
@@ -66,7 +70,7 @@ async function mockComplete(
   const lowerPrompt = (prompt || "").toLowerCase();
   let answer =
     "PRELIMINARY GEOSPATIAL FLAGGING: Visual anomaly detection complete. 2 candidate zones identified with localized red bounding boxes. Surface features cross-referenced against historical baseline. Human officer ground verification recommended.";
-  let markedPath = "/mock/marked_sample.png";
+  let markedPath = (imagePaths && imagePaths.length > 0 && imagePaths[0]) || "/mock/marked_sample.png";
 
   if (
     lowerPrompt.includes("flood") ||

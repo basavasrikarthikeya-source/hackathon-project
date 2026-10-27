@@ -116,7 +116,7 @@ export function DrishtiSidebar({
       <div className="p-3.5 pb-2">
         <button
           onClick={onNewInspection}
-          className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-[#00f2fe] to-[#4facfe] text-[#050510] font-semibold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,242,254,0.3)] hover:shadow-[0_0_25px_rgba(0,242,254,0.5)] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+          aria-label="Start new inspection" className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-[#00f2fe] to-[#4facfe] text-[#050510] font-semibold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,242,254,0.3)] hover:shadow-[0_0_25px_rgba(0,242,254,0.5)] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>New inspection</span>
@@ -156,7 +156,7 @@ export function DrishtiSidebar({
                 <button
                   key={item.id}
                   onClick={() => onSelectInspection(item)}
-                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                     isActive
                       ? "bg-cyan-500/15 border border-cyan-400/40 text-cyan-200 shadow-[0_0_10px_rgba(0,242,254,0.15)]"
                       : "text-neutral-300 hover:text-white hover:bg-white/5 border border-transparent"
@@ -192,7 +192,7 @@ export function DrishtiSidebar({
                 <button
                   key={item.id}
                   onClick={() => onSelectInspection(item)}
-                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                     isActive
                       ? "bg-cyan-500/15 border border-cyan-400/40 text-cyan-200 shadow-[0_0_10px_rgba(0,242,254,0.15)]"
                       : "text-neutral-300 hover:text-white hover:bg-white/5 border border-transparent"
@@ -227,7 +227,7 @@ export function DrishtiSidebar({
                 <button
                   key={item.id}
                   onClick={() => onSelectInspection(item)}
-                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between text-xs transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                     isActive
                       ? "bg-cyan-500/15 border border-cyan-400/40 text-cyan-200 shadow-[0_0_10px_rgba(0,242,254,0.15)]"
                       : "text-neutral-300 hover:text-white hover:bg-white/5 border border-transparent"
@@ -271,9 +271,10 @@ export function DrishtiSidebar({
         </button>
 
         {/* User Workspace Profile */}
-        <div
+        <button
+          type="button"
           onClick={onOpenAuth}
-          className="pt-2 mt-1 border-t border-white/5 flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          className="w-full text-left pt-2 mt-1 border-t border-white/5 flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           title="Analyst profile & credentials"
         >
           <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
@@ -285,7 +286,7 @@ export function DrishtiSidebar({
             </div>
             <div className="text-[10px] text-neutral-400">Drishti Studio</div>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, FolderPlus, Plus } from "lucide-react";
+import { X, FolderPlus } from "lucide-react";
 import { Project } from "@/types/drishti";
 
 interface NewProjectModalProps {

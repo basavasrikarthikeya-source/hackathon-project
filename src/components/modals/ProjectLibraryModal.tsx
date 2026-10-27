@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, Layers, Check, ArrowRight, MapPin } from "lucide-react";
+import { X, Layers, ArrowRight, MapPin } from "lucide-react";
 
 interface ProjectLibraryModalProps {
   isOpen: boolean;

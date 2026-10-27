@@ -73,6 +73,29 @@ export function InspectionHero({
     setAfterFile(temp);
   };
 
+  // Performance & Memory: Memoize object URLs to prevent leaks and re-decoding on every keystroke
+  const beforePreviewUrl = React.useMemo(() => {
+    if (!beforeFile) return null;
+    return URL.createObjectURL(beforeFile);
+  }, [beforeFile]);
+
+  React.useEffect(() => {
+    return () => {
+      if (beforePreviewUrl) URL.revokeObjectURL(beforePreviewUrl);
+    };
+  }, [beforePreviewUrl]);
+
+  const afterPreviewUrl = React.useMemo(() => {
+    if (!afterFile) return null;
+    return URL.createObjectURL(afterFile);
+  }, [afterFile]);
+
+  React.useEffect(() => {
+    return () => {
+      if (afterPreviewUrl) URL.revokeObjectURL(afterPreviewUrl);
+    };
+  }, [afterPreviewUrl]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-6 sm:space-y-8 relative z-10 select-none">
       {/* Title & Subtitle */}
@@ -128,7 +151,7 @@ export function InspectionHero({
                 {beforeFile ? (
                   <div className="relative w-full h-28 rounded-xl overflow-hidden bg-neutral-900 border border-white/10">
                     <img
-                      src={URL.createObjectURL(beforeFile)}
+                      src={beforePreviewUrl || ""} loading="lazy" decoding="async"
                       alt="Before"
                       className="w-full h-full object-cover"
                     />
@@ -162,7 +185,7 @@ export function InspectionHero({
                 {afterFile ? (
                   <div className="relative w-full h-28 rounded-xl overflow-hidden bg-neutral-900 border border-white/10">
                     <img
-                      src={URL.createObjectURL(afterFile)}
+                      src={afterPreviewUrl || ""} loading="lazy" decoding="async"
                       alt="After"
                       className="w-full h-full object-cover"
                     />
@@ -209,7 +232,7 @@ export function InspectionHero({
           <div className="w-full flex flex-col items-center space-y-3">
             <div className="relative w-64 h-36 rounded-2xl overflow-hidden bg-neutral-900 border border-cyan-400/40 shadow-[0_0_20px_rgba(0,242,254,0.2)]">
               <img
-                src={URL.createObjectURL(afterFile)}
+                src={afterPreviewUrl || ""} loading="lazy" decoding="async"
                 alt="Selected Satellite Imagery"
                 className="w-full h-full object-cover"
               />
@@ -285,7 +308,7 @@ export function InspectionHero({
                 "Count and identify all building footprints and detect unauthorized construction."
               )
             }
-            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <FileText className="w-3.5 h-3.5 text-cyan-400" />
             <span>Count buildings</span>
@@ -297,7 +320,7 @@ export function InspectionHero({
                 "Detect water bodies, flood inundation extent, and shoreline breach zones."
               )
             }
-            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <Droplets className="w-3.5 h-3.5 text-cyan-400" />
             <span>Detect water bodies</span>
@@ -309,7 +332,7 @@ export function InspectionHero({
                 "Measure tree canopy coverage, foliage density tracking, and vegetation loss."
               )
             }
-            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            className="px-3.5 py-1.5 rounded-full bg-[#140e30]/80 hover:bg-[#1a123f] border border-white/10 hover:border-cyan-400/40 text-neutral-200 hover:text-white text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <Trees className="w-3.5 h-3.5 text-cyan-400" />
             <span>Measure canopy coverage</span>

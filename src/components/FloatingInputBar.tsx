@@ -122,7 +122,8 @@ export function FloatingInputBar({
           <button
             type="button"
             onClick={() => hiddenInputRef.current?.click()}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 border border-white/5"
+            aria-label="Attach satellite imagery"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 border border-white/5 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             title={
               mode === "comparison"
                 ? !beforeFile
@@ -137,6 +138,7 @@ export function FloatingInputBar({
           {/* Query Input */}
           <input
             type="text"
+            aria-label="Satellite query prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isSubmitting}
@@ -150,6 +152,7 @@ export function FloatingInputBar({
           {/* Analyse Button */}
           <button
             type="submit"
+            aria-label="Execute satellite analysis query"
             disabled={isSubmitting || !prompt.trim() || !hasImages}
             className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#00f2fe] to-[#4facfe] text-[#050510] font-bold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,242,254,0.3)] hover:shadow-[0_0_20px_rgba(0,242,254,0.5)] disabled:opacity-40 disabled:hover:shadow-none disabled:cursor-not-allowed transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
           >

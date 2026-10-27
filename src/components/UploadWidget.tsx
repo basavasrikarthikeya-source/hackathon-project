@@ -38,6 +38,22 @@ export function UploadWidget({
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
 
+  const beforePreviewUrl = React.useMemo(
+    () => (beforeFile ? URL.createObjectURL(beforeFile) : null),
+    [beforeFile]
+  );
+  const afterPreviewUrl = React.useMemo(
+    () => (afterFile ? URL.createObjectURL(afterFile) : null),
+    [afterFile]
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (beforePreviewUrl) URL.revokeObjectURL(beforePreviewUrl);
+      if (afterPreviewUrl) URL.revokeObjectURL(afterPreviewUrl);
+    };
+  }, [beforePreviewUrl, afterPreviewUrl]);
+
   const validateFile = (file: File): Promise<boolean> => {
     return new Promise((resolve) => {
       setErrorMsg(null);
@@ -181,7 +197,7 @@ export function UploadWidget({
             {beforeFile ? (
               <div className="w-full flex items-center gap-3">
                 <img
-                  src={URL.createObjectURL(beforeFile)}
+                  src={beforePreviewUrl || ""} loading="lazy" decoding="async"
                   alt="Before Preview"
                   className="w-16 h-16 object-cover rounded-lg border border-neutral-700"
                 />
@@ -243,7 +259,7 @@ export function UploadWidget({
           {afterFile ? (
             <div className="w-full flex items-center gap-3">
               <img
-                src={URL.createObjectURL(afterFile)}
+                src={afterPreviewUrl || ""} loading="lazy" decoding="async"
                 alt="After Preview"
                 className="w-16 h-16 object-cover rounded-lg border border-neutral-700"
               />

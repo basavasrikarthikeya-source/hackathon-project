@@ -1,0 +1,40 @@
+{
+  "passed": [
+    "T01: Root Route HTTP 200 OK",
+    "T01: Page title verified",
+    "T02: Unknown route returns HTTP 404",
+    "T03: Brand logo button present",
+    "T03: Comparison Mode activated",
+    "T03: Interactive Mode activated",
+    "T04: About Modal displays architecture docs",
+    "T04: About Modal closed on Escape",
+    "T05: Command Palette opened",
+    "T05: Command Palette search filtering works",
+    "T05: Command Palette closes on Escape",
+    "T06: Sidebar inspection selection renders InspectionResult findings",
+    "T09: AuthModal opened",
+    "T12: Responsive layout clean at Desktop 1920x1080",
+    "T12: Responsive layout clean at Laptop 1440x900",
+    "T12: Responsive layout clean at Tablet 768x1024",
+    "T12: Responsive layout clean at Mobile iPhone 12/13/14 (390x844)",
+    "T12: Responsive layout clean at Small Mobile (375x667)",
+    "T13: All interactive buttons have accessible labels"
+  ],
+  "failed": [],
+  "warnings": [],
+  "notRun": [],
+  "consoleLogs": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "verbose",
+      "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o"
+    }
+  ],
+  "networkErrors": [],
+  "metrics": {
+    "rootLoadTimeMs": 776
+  }
+}

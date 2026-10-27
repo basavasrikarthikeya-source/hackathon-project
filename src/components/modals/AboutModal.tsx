@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, Compass, ShieldCheck, Cpu, Database, Radio, Globe } from "lucide-react";
+import { X, ShieldCheck, Cpu, Database, Radio, Globe } from "lucide-react";
 
 interface AboutModalProps {
   isOpen: boolean;
