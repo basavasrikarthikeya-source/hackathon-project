@@ -12,6 +12,7 @@ AI-powered satellite imagery analysis and change-detection for government office
 ├── frontend/        # Vite/React UI (rich component library — simulated backend)
 ├── backend/         # Kaggle AI Worker (Qwen2.5-VL + Gradio tunnel)
 ├── docs/            # Schema, architecture, and pitch deck
+├── prototypes/      # Standalone direct-mode prototype UI and test scripts
 ├── public/          # Static assets for Next.js app
 ├── .env.example     # Environment variable template
 └── README.md        # This file

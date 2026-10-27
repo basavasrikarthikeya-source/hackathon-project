@@ -7,6 +7,7 @@ This folder contains the backend AI worker, database definitions, API contract, 
 ## 📁 Folder Structure
 
 - **`kaggle_worker.py`**: Standalone Python AI inference engine. Runs Qwen2.5-VL for satellite imagery analysis, change detection, and bounding box annotation, communicating with Supabase and exposing a Gradio tunnel endpoint.
+- **cell_w_worker.py**: Standalone direct-mode worker script (Cell W). Exposes /health, /chat, /compare, and /predict Gradio endpoints directly for quick testing and direct browser-to-engine communication without requiring Supabase.
 - **`satquery_kaggle_worker.ipynb`**: Ready-to-run Jupyter notebook for Kaggle (GPU T4/P100 or 2xT4).
 - **`API_CONTRACT_FOR_FRONTEND.md`**: Formal integration contract detailing the `/predict` doorbell signature, Supabase realtime channels, and data flow between Frontend and Backend.
 - **`test_backend_pipeline.py`**: Smoke test script verifying Supabase connectivity, `images` storage bucket, and `jobs` table accessibility.
