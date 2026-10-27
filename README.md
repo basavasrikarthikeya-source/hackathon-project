@@ -20,7 +20,7 @@ A collaborative hackathon project built with Antigravity.
 
 ### 1. Clone the Repository
 ```bash
-git clone <REPOSITORY_URL>
+git clone https://github.com/basavasrikarthikeya-source/hackathon-project.git
 cd hackathon-project
 ```
 
