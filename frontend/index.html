@@ -2,13 +2,29 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drishti — AI-Powered Satellite Imagery Analysis</title>
     <meta name="description" content="Drishti: AI-powered satellite imagery analysis assistant. Evidence, not guesses. Plain-English query, visual proof overlays, verifiable audit trail." />
+    
+    <!-- Open Graph Metadata -->
+    <meta property="og:title" content="Drishti — AI-Powered Satellite Imagery Analysis" />
+    <meta property="og:description" content="Evidence, not guesses. Sub-pixel satellite raster inspection and epistemic validation." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Header Logo Preload (Zero CLS) -->
+    <link rel="preload" as="image" href="/logo-256.png" type="image/png" fetchpriority="high" />
+    
+    <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/backgrounds/nebula-2880.avif" type="image/avif" fetchpriority="high" />
   </head>
   <body class="bg-[#02040A] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden min-h-screen">
     <div id="root"></div>

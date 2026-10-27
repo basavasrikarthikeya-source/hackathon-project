@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 /* Lenis smooth scroll rules */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 html.lenis, html.lenis body {
   height: auto;
 }
@@ -28,27 +32,65 @@ video, canvas {
   image-rendering: -webkit-optimize-contrast;
 }
 
-:root, [data-theme="orbit"] {
-  --bg: #05070F;
-  --surface: #0A0F1D;
-  --surface-2: #0F1627;
-  --line: #151D33;
-  --text: #E8EEFC;
-  --text-muted: #8A97B8;
-  --text-faint: #5A6685;
+:root {
+  --bg-fallback: #05070F;
+  --scrim: rgba(4, 6, 16, 0.62);
+  --surface: rgba(8, 12, 26, 0.86);   /* composer, popovers, modals ONLY */
+  --surface-2: rgba(255, 255, 255, 0.06); /* hover and raised states */
+  --line: rgba(255, 255, 255, 0.10); /* hairlines, used sparingly */
+  --text: #F2F6FF;
+  --text-muted: #B4BFDA;
+  --text-faint: #8793B3;
   --accent: #22D3EE;
-  --accent-soft: rgba(34, 211, 238, 0.12);
+  --accent-soft: rgba(34, 211, 238, 0.16);
   --ok: #34D399;
   --warn: #FBBF24;
   --danger: #F87171;
 
-  --theme-primary: 6 182 212; /* cyan-500 */
-  --theme-primary-hex: #06b6d4;
-  --theme-primary-rgb: 6, 182, 212;
+  /* Aliases for Tailwind & compatibility */
+  --bg: #05070F;
+  --theme-primary: 34 211 238;
+  --theme-primary-hex: #22d3ee;
+  --theme-primary-rgb: 34, 211, 238;
   --theme-accent-hex: #22d3ee;
-  --theme-bg-glow: rgba(6, 182, 212, 0.15);
-  --theme-border-glow: rgba(6, 182, 212, 0.35);
-  --theme-subtle: rgba(6, 182, 212, 0.08);
+  --theme-bg-glow: rgba(34, 211, 238, 0.15);
+  --theme-border-glow: rgba(34, 211, 238, 0.35);
+  --theme-subtle: rgba(34, 211, 238, 0.08);
+}
+
+/* Nebula legibility text-shadow for all prose & headers */
+.nebula-text-shadow {
+  text-shadow: 0 1px 12px rgba(2, 4, 10, 0.55);
+}
+
+/* Part 1: Feathered Scrims (No hard borders, perfectly feathered into nebula) */
+
+/* a) Reading column mask behind thread (max-width ~880px, centered) */
+.reading-column-mask {
+  position: relative;
+}
+.reading-column-mask::before {
+  content: "";
+  position: absolute;
+  inset: -40px -60px;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(ellipse 60% 70% at 50% 45%, rgba(4, 6, 16, 0.62), rgba(4, 6, 16, 0.46) 55%, rgba(4, 6, 16, 0) 100%);
+}
+
+/* b) Sidebar feathered horizontal scrim from left edge (no border line, no panel fill) */
+.sidebar-scrim {
+  background: linear-gradient(90deg, rgba(4, 6, 16, 0.88) 0%, rgba(4, 6, 16, 0.72) 75%, rgba(4, 6, 16, 0) 100%);
+}
+
+/* c) Top bar gentle top fade after scroll */
+.topbar-scrim {
+  background: linear-gradient(rgba(4, 6, 16, 0.75), rgba(4, 6, 16, 0));
+}
+
+/* d) Bottom 120px fade so thread dissolves above composer */
+.thread-bottom-fade {
+  background: linear-gradient(to top, rgba(4, 6, 16, 0.95) 0%, rgba(4, 6, 16, 0.60) 65%, rgba(4, 6, 16, 0) 100%);
 }
 
 [data-theme="emerald"] {
@@ -158,3 +200,19 @@ video, canvas {
   );
   background-size: 100% 3px, 6px 100%;
 }
+
+/* Continuous scroll-driven header glass layer (no thresholds, no state-flipping) */
+.about-header-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: var(--hp, 0);
+  will-change: opacity;
+  transform: translateZ(0);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: linear-gradient(rgba(4, 6, 16, 0.72), rgba(4, 6, 16, 0));
+  border-bottom: 1px solid rgba(255, 255, 255, calc(var(--hp, 0) * 0.1));
+}
+

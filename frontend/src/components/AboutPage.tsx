@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
+import { Logo } from './Logo';
 import {
   ArrowRight,
   Upload,
@@ -51,9 +52,16 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const ch3Ref = useRef<HTMLDivElement>(null);
   const ch4Ref = useRef<HTMLDivElement>(null);
 
+  // Continuous header progress ref
+  const aboutHeaderRef = useRef<HTMLElement | null>(null);
+  const headerProgressRef = useRef<number>(0);
+
   // Step 0: Debug HUD refs (toggle with ?debug=1)
   const debugOverlayRef = useRef<HTMLDivElement>(null);
   const debugProgressRef = useRef<HTMLSpanElement>(null);
+  const debugScrollPxRef = useRef<HTMLSpanElement>(null);
+  const debugHeaderProgressRef = useRef<HTMLSpanElement>(null);
+  const debugHeaderStateRef = useRef<HTMLSpanElement>(null);
   const debugTargetTimeRef = useRef<HTMLSpanElement>(null);
   const debugCurrentTimeRef = useRef<HTMLSpanElement>(null);
   const debugSeekingRef = useRef<HTMLSpanElement>(null);
@@ -81,7 +89,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const [isHdActive, setIsHdActive] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [logoError, setLogoError] = useState(false);
 
   // Check URL query param ?debug=1
   const [showDebug] = useState(() => {
@@ -187,8 +194,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
         return;
       }
 
+      const isTargetZero = clamped === 0;
       const diff = Math.abs(clamped - activeVideo.currentTime);
-      if (diff >= (0.35 / SCRUB.FPS)) {
+      if (diff >= (0.35 / SCRUB.FPS) || (isTargetZero && diff > 0.001)) {
         isSeeking = true;
         const now = performance.now();
         if (lastSeekTime > 0) {
@@ -402,7 +410,22 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       lenis.raf(time);
 
       // Read normalized scroll progress directly from Lenis (no getBoundingClientRect or DOM reads)
-      const progress = lenis.limit > 0 ? Math.min(Math.max(lenis.scroll / lenis.limit, 0), 1) : 0;
+      const scrollPx = Math.max(0, lenis.scroll);
+      const progress = lenis.limit > 0 ? Math.min(Math.max(scrollPx / lenis.limit, 0), 1) : 0;
+
+      // Continuous header progress calculation (p = clamp(scroll / 96, 0, 1))
+      const targetHp = Math.min(Math.max(scrollPx / 96, 0), 1);
+      headerProgressRef.current += (targetHp - headerProgressRef.current) * 0.2;
+      if (Math.abs(targetHp - headerProgressRef.current) < 0.001) {
+        headerProgressRef.current = targetHp;
+      }
+
+      if (!aboutHeaderRef.current) {
+        aboutHeaderRef.current = document.getElementById('about-header');
+      }
+      if (aboutHeaderRef.current) {
+        aboutHeaderRef.current.style.setProperty('--hp', headerProgressRef.current.toFixed(4));
+      }
 
       // 2. Video mode scrubbing (Seek-queueing with 0ms All-Intra seek response)
       let targetTime = 0;
@@ -414,8 +437,16 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
         if (activeVid && isFinite(activeVid.duration) && activeVid.duration > 0) {
           targetTime = progress * activeVid.duration;
 
-          // Smooth responsive interpolation towards target time
-          currentVideoTime += (targetTime - currentVideoTime) * SCRUB.LERP_FACTOR;
+          // Settle smoothly to 0 and target time without snapping
+          const timeDelta = targetTime - currentVideoTime;
+          if (Math.abs(timeDelta) < 0.003) {
+            currentVideoTime += timeDelta * 0.25;
+            if (Math.abs(targetTime - currentVideoTime) < 0.0005) {
+              currentVideoTime = targetTime;
+            }
+          } else {
+            currentVideoTime += timeDelta * SCRUB.LERP_FACTOR;
+          }
 
           // Quantise to frame grid
           const quantisedTime = Math.round(currentVideoTime * SCRUB.FPS) / SCRUB.FPS;
@@ -424,11 +455,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           // NOTE: NO transform: scale on video element (preserves 1:1 pixel sharpness)!
         }
 
-        // Frame 0 Hero Sharpness: keep 100% sharp at progress 0, smoothly crossfade into scrub video
+        // Poster is shown only before first frame is decoded; do not swap back on scroll = 0
         if (heroPosterRef.current) {
-          const posterOpacity = Math.max(0, 1 - progress * 25);
-          heroPosterRef.current.style.opacity = posterOpacity.toFixed(3);
-          heroPosterRef.current.style.visibility = posterOpacity > 0.005 ? 'visible' : 'hidden';
+          if (previewReady || (activeVid && activeVid.readyState >= 2)) {
+            heroPosterRef.current.style.opacity = '0';
+            heroPosterRef.current.style.visibility = 'hidden';
+          }
         }
       } else if (SCRUB.MODE === 'frames') {
         // Step 4: Canvas Image Sequence
@@ -447,6 +479,18 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
         const activeVid = (shouldLoadHd && hdVideoRef.current) ? hdVideoRef.current : (previewVideoRef.current || hdVideoRef.current);
         if (debugProgressRef.current) {
           debugProgressRef.current.textContent = (progress * 100).toFixed(1) + '%';
+        }
+        if (debugScrollPxRef.current) {
+          debugScrollPxRef.current.textContent = `${scrollPx.toFixed(1)}px`;
+        }
+        if (debugHeaderProgressRef.current) {
+          debugHeaderProgressRef.current.textContent = headerProgressRef.current.toFixed(3);
+        }
+        if (debugHeaderStateRef.current) {
+          const hp = headerProgressRef.current;
+          const stateStr = hp <= 0.001 ? 'transparent (0.0)' : hp >= 0.999 ? 'glass (1.0)' : `easing (${hp.toFixed(2)})`;
+          debugHeaderStateRef.current.textContent = stateStr;
+          debugHeaderStateRef.current.className = hp >= 0.999 ? 'text-cyan-400 font-bold' : hp <= 0.001 ? 'text-slate-400' : 'text-amber-400';
         }
         if (debugTargetTimeRef.current) {
           debugTargetTimeRef.current.textContent = targetTime.toFixed(3) + 's';
@@ -612,8 +656,20 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             <span ref={debugVariantRef} className="font-bold text-emerald-400">1080p HD</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-slate-400">Scroll (px):</span>
+            <span ref={debugScrollPxRef} className="font-bold text-white">0.0px</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-slate-400">Scroll Progress:</span>
             <span ref={debugProgressRef} className="font-bold text-white">0.0%</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Header Progress:</span>
+            <span ref={debugHeaderProgressRef} className="font-bold text-white">0.000</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Header State:</span>
+            <span ref={debugHeaderStateRef} className="text-slate-400">transparent (0.0)</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Target Time:</span>
@@ -982,18 +1038,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
           {/* Clean Footer with Logo */}
           <footer className="w-full pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-slate-400 select-none">
             <div className="flex items-center gap-3">
-              {!logoError ? (
-                <img
-                  src="/logo.png"
-                  alt="Drishti Logo"
-                  onError={() => setLogoError(true)}
-                  className="h-8 w-auto object-contain"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-lg border border-white/20 bg-white/5 flex items-center justify-center text-xs font-mono text-cyan-400">
-                  D
-                </div>
-              )}
+              <Logo size={32} />
               <span className="font-heading font-bold text-sm text-white/90">
                 Drishti
               </span>
