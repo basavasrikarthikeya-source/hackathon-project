@@ -323,6 +323,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         }
       );
 
+      // Ensure the displayed image matches the user's uploaded image
+      if (targetImages.length > 0 && targetImages[0].url) {
+        if (!finalAnswer.imageUrl || finalAnswer.imageUrl.includes('urban-satellite') || targetImages[0].file) {
+          finalAnswer.imageUrl = targetImages[targetImages.length - 1].url;
+        }
+      }
+
       // Persist assistant message
       dataService.createMessage(chatId, {
         role: 'assistant',
