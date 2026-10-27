@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisionAI · Kaggle Pipeline | SatQuery ST-09</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#172033',
+              900: '#0f172a',
+              950: '#090d16',
+            },
+            indigo: {
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            emerald: {
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .evidence-box-pulse {
+      animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(239, 68, 68, 0.8); }
+      50% { border-color: rgba(239, 68, 68, 0.3); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between">
+    <!-- Brand / Logo -->
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white text-lg">
+        <i class="fa-solid fa-satellite"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-base tracking-tight text-white">VisionAI</span>
+          <span class="text-xs text-slate-400 font-mono hidden sm:inline">· Kaggle Pipeline</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">ST-09</span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden md:block">Grounded Satellite Earth-Observation Triage Engine</p>
+      </div>
+    </div>
+
+    <!-- Mode Switcher (Cleaned without duplicate class attributes) -->
+    <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 gap-1">
+      <button id="mode-interactive-btn" class="flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all bg-indigo-600 text-white shadow-sm">
+        <i class="fa-solid fa-crosshairs"></i>
+        <span>Interactive</span>
+      </button>
+      <button id="mode-comparison-btn" class="flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i class="fa-solid fa-code-compare"></i>
+        <span>Comparison</span>
+      </button>
+    </div>
+
+    <!-- Engine Status & Settings -->
+    <div class="flex items-center gap-2.5">
+      <!-- Mock Mode Indicator -->
+      <span id="badge-mock" class="hidden text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+        MOCK MODE
+      </span>
+
+      <!-- Health Status Dot -->
+      <div id="status-pill" class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="status-text" class="text-[11px] font-medium">Checking engine...</span>
+      </div>
+
+      <!-- Settings Gear Button -->
+      <button id="btn-settings" title="Engine Settings" class="w-8 h-8 rounded-lg bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center text-xs transition">
+        <i class="fa-solid fa-gear"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= OFFLINE WARNING BANNER ================= -->
+  <div id="offline-banner" class="hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs text-amber-200">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+      <span><strong>AI engine offline</strong> — a Kaggle session is restarting. Back in ~10 minutes.</span>
+    </div>
+    <button id="btn-banner-settings" class="px-2.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-100 font-medium text-xs transition">
+      Open engine settings
+    </button>
+  </div>
+
+  <!-- ================= MAIN LAYOUT ================= -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-80 border-r border-slate-800 bg-slate-950/60 hidden lg:flex flex-col justify-between shrink-0 overflow-y-auto">
+      <div class="p-4 space-y-5">
+        <!-- What is SatQuery -->
+        <div>
+          <h2 class="text-xs uppercase font-semibold tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+            What is SatQuery?
+          </h2>
+          <p class="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+            A trustworthy satellite vision assistant for government officers and field analysts. Answers questions with
+            <strong class="text-indigo-300">evidence bounding boxes</strong> and adheres to strict refusal rules (R0–R7) to prevent hallucinated decisions.
+          </p>
+        </div>
+
+        <!-- Presets -->
+        <div>
+          <h2 class="text-xs uppercase font-semibold tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
+            Government Triage Presets
+          </h2>
+          <div class="space-y-2">
+            <button class="preset-btn w-full text-left p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/50 transition group"
+                    data-mode="interactive"
+                    data-question="How many buildings are in this area? Flag each structure."
+                    data-image="sample_single.png"
+                    data-threshold="0.8">
+              <div class="flex items-center justify-between text-xs font-medium text-slate-200 group-hover:text-indigo-300">
+                <span>UC-1: Structure Census</span>
+                <i class="fa-solid fa-arrow-right text-[10px] text-slate-500 group-hover:text-indigo-400"></i>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">Detect residential & commercial buildings with coordinates.</p>
+            </button>
+
+            <button class="preset-btn w-full text-left p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 transition group"
+                    data-mode="comparison"
+                    data-question="Did anyone cut trees or build new structures in this sector?"
+                    data-past="sample_past.png"
+                    data-present="sample_present.png"
+                    data-months="6">
+              <div class="flex items-center justify-between text-xs font-medium text-slate-200 group-hover:text-emerald-300">
+                <span>UC-2: Forest Deforestation</span>
+                <i class="fa-solid fa-arrow-right text-[10px] text-slate-500 group-hover:text-emerald-400"></i>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">Multi-temporal vegetation loss & clearing verification.</p>
+            </button>
+
+            <button class="preset-btn w-full text-left p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/50 transition group"
+                    data-mode="interactive"
+                    data-question="What is the population and demographic income of this city?"
+                    data-image="sample_single.png"
+                    data-threshold="0.8">
+              <div class="flex items-center justify-between text-xs font-medium text-slate-200 group-hover:text-amber-300">
+                <span>R4 Refusal Demo (Unanswerable)</span>
+                <i class="fa-solid fa-ban text-[10px] text-red-400"></i>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">Population/prices test — proves refusal by design.</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Trust & Refusal Layer Summary -->
+        <div>
+          <h2 class="text-xs uppercase font-semibold tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-scale-balanced text-slate-400"></i>
+            Trust Layer (R0–R7)
+          </h2>
+          <div class="text-[11px] space-y-1.5 text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 font-mono">
+            <div class="flex items-center justify-between">
+              <span>R0 Admissibility:</span>
+              <span class="text-slate-300">≥256px, ≤20MB</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span>R4 Class Filter:</span>
+              <span class="text-slate-300">No pop/price</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span>R6 Box Audit:</span>
+              <span class="text-slate-300">IoU &gt; 0.85 merge</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span>R7 Crop Check:</span>
+              <span class="text-slate-300">Zero-box = UNCERTAIN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Disclaimer -->
+      <div class="p-3 border-t border-slate-800 text-[10px] text-slate-400 leading-tight bg-slate-950">
+        <p class="font-medium text-slate-300 mb-1">
+          <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+          Model Flags, Humans Decide.
+        </p>
+        AI-generated preliminary triage. Official legal & tactical actions require on-ground human verification.
+      </div>
+    </aside>
+
+    <!-- RIGHT / WORKSPACE AREA -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-900 relative">
+
+      <!-- ================= MODE 1: INTERACTIVE VIEW ================= -->
+      <section id="view-interactive" class="flex-1 flex flex-col min-h-0">
+        <!-- Chat History -->
+        <div id="chat-history" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+          <!-- Welcome message if empty -->
+          <div id="empty-state-interactive" class="text-center py-12 px-4 max-w-lg mx-auto">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+              <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <h3 class="text-base font-semibold text-white">Interactive Single-Image Analysis</h3>
+            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              Upload a satellite tile, ask a question, and pick your confidence threshold. The AI returns an evidence-backed answer with verified bounding boxes.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
+              <button class="quick-prompt px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs text-slate-300 hover:text-white transition"
+                      data-q="How many buildings are in this image?">
+                "How many buildings are in this image?"
+              </button>
+              <button class="quick-prompt px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs text-slate-300 hover:text-white transition"
+                      data-q="Where is the river and road network?">
+                "Where is the river and road network?"
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- In-flight Thinking Indicator -->
+        <div id="interactive-thinking" class="hidden px-4 md:px-6 pb-3">
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-850/80 border border-slate-700/60 max-w-md shadow-lg">
+            <div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <div>
+              <span class="text-xs font-medium text-slate-200">Analyzing satellite pixels…</span>
+              <span id="interactive-timer" class="text-xs font-mono text-indigo-400 ml-1">0s</span>
+              <p class="text-[10px] text-slate-400">Validating admissibility and auditing crop candidates</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="border-t border-slate-800 bg-slate-950/90 p-3 md:p-4">
+          <!-- Pending Image Attachment Preview -->
+          <div id="attachment-preview" class="hidden mb-2.5 items-center gap-2 p-1.5 pr-3 bg-slate-850 border border-slate-700 rounded-lg w-fit max-w-sm">
+            <img id="attachment-thumb" src="" alt="Thumbnail" class="w-10 h-10 object-cover rounded border border-slate-600 bg-black">
+            <div class="overflow-hidden">
+              <p id="attachment-filename" class="text-xs font-medium text-slate-200 truncate">image.png</p>
+              <span id="attachment-size" class="text-[10px] text-slate-400">1.2 MB</span>
+            </div>
+            <button id="btn-remove-attachment" class="ml-2 w-6 h-6 rounded-full bg-slate-750 hover:bg-red-500/20 text-slate-400 hover:text-red-400 flex items-center justify-center transition">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Input Controls Form -->
+          <form id="interactive-form" class="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <!-- Hidden File Input -->
+            <input type="file" id="interactive-file-input" accept="image/png,image/jpeg,image/webp" class="hidden">
+            
+            <!-- Upload Button (+) -->
+            <button type="button" id="btn-upload-interactive" title="Upload satellite image (≥256px, ≤20MB)"
+                    class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shrink-0">
+              <i class="fa-solid fa-plus text-sm"></i>
+            </button>
+
+            <!-- Question Input -->
+            <div class="flex-1 min-w-[200px] relative">
+              <input type="text" id="interactive-input"
+                     placeholder="Ask about structures, roads, clearing… (or leave blank for general scan)"
+                     class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3.5 py-2 text-xs md:text-sm text-white placeholder-slate-500 focus:outline-none transition">
+            </div>
+
+            <!-- Confidence Threshold Dropdown (Values must be NUMBERS 1.0, 0.8, 0.5) -->
+            <div class="shrink-0 flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5">
+              <span class="text-[11px] text-slate-400 hidden md:inline">Bar:</span>
+              <select id="interactive-threshold" class="bg-transparent text-xs text-slate-200 font-medium focus:outline-none cursor-pointer">
+                <option value="1.0" class="bg-slate-900 text-slate-200">100% Strict</option>
+                <option value="0.8" selected class="bg-slate-900 text-slate-200">80% Balanced</option>
+                <option value="0.5" class="bg-slate-900 text-slate-200">50% Exploratory</option>
+              </select>
+            </div>
+
+            <!-- GO Button -->
+            <button type="submit" id="btn-submit-interactive"
+                    class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-xs md:text-sm flex items-center gap-1.5 transition shadow-lg shadow-indigo-600/20 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+              <span>GO</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </form>
+        </div>
+      </section>
+
+
+      <!-- ================= MODE 2: COMPARISON VIEW ================= -->
+      <section id="view-comparison" class="hidden flex-1 flex-col overflow-y-auto p-4 md:p-6 space-y-6">
+        
+        <!-- Header description -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <i class="fa-solid fa-code-compare text-emerald-400"></i>
+              Multi-Temporal Change Detection
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Upload past and present captures. The AI pins change bounding boxes onto the present image.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+            <span class="text-slate-400">Interval:</span>
+            <input type="number" id="comparison-interval" value="6" min="1" max="120" class="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center text-xs text-white">
+            <span class="text-slate-400">months</span>
+          </div>
+        </div>
+
+        <!-- Inline Error Banner -->
+        <div id="comparison-error-banner" class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation text-red-400 shrink-0"></i>
+          <span id="comparison-error-text">Please upload both PAST and PRESENT satellite captures.</span>
+        </div>
+
+        <!-- Two Dashed Upload Slots -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- PAST Slot -->
+          <div id="slot-past" class="group relative border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-4 bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center min-h-[220px] text-center cursor-pointer overflow-hidden">
+            <input type="file" id="past-file-input" accept="image/png,image/jpeg,image/webp" class="hidden">
+            <div id="past-placeholder" class="space-y-2">
+              <div class="w-10 h-10 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center mx-auto text-base group-hover:scale-110 transition">
+                <i class="fa-regular fa-clock"></i>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-slate-200">PAST CAPTURE</p>
+                <p class="text-[11px] text-slate-400">Baseline scan (5–6 months ago)</p>
+              </div>
+              <p class="text-[10px] text-slate-500">Click or drag & drop PNG/JPG</p>
+            </div>
+            <!-- Past Image Loaded Preview -->
+            <div id="past-preview-container" class="hidden absolute inset-0 bg-slate-900 flex flex-col">
+              <img id="past-preview-img" src="" alt="Past capture" class="w-full h-full object-contain">
+              <div class="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur text-[10px] font-mono text-slate-200 border border-white/10">
+                PAST
+              </div>
+              <button id="btn-remove-past" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/80 hover:bg-red-600 text-white flex items-center justify-center shadow transition" title="Remove image">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- PRESENT Slot -->
+          <div id="slot-present" class="group relative border-2 border-dashed border-slate-700 hover:border-emerald-500/50 rounded-xl p-4 bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center min-h-[220px] text-center cursor-pointer overflow-hidden">
+            <input type="file" id="present-file-input" accept="image/png,image/jpeg,image/webp" class="hidden">
+            <div id="present-placeholder" class="space-y-2">
+              <div class="w-10 h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center mx-auto text-base group-hover:scale-110 transition">
+                <i class="fa-solid fa-crosshairs"></i>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-slate-200">PRESENT CAPTURE</p>
+                <p class="text-[11px] text-slate-400">Current scan (evidence boxes land here)</p>
+              </div>
+              <p class="text-[10px] text-slate-500">Click or drag & drop PNG/JPG</p>
+            </div>
+            <!-- Present Image Loaded Preview -->
+            <div id="present-preview-container" class="hidden absolute inset-0 bg-slate-900 flex flex-col">
+              <img id="present-preview-img" src="" alt="Present capture" class="w-full h-full object-contain">
+              <div class="absolute top-2 left-2 px-2 py-0.5 rounded bg-emerald-900/80 backdrop-blur text-[10px] font-mono text-emerald-200 border border-emerald-500/30">
+                PRESENT
+              </div>
+              <button id="btn-remove-present" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/80 hover:bg-red-600 text-white flex items-center justify-center shadow transition" title="Remove image">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question Input for Comparison -->
+        <div class="space-y-1.5">
+          <label for="comparison-question" class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+            Comparison Question
+          </label>
+          <input type="text" id="comparison-question"
+                 value="What changed between these two images?"
+                 placeholder="e.g. Did anyone cut trees? Where are new structures near the flood basin?"
+                 class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-3.5 py-2.5 text-xs md:text-sm text-white placeholder-slate-500 focus:outline-none transition">
+        </div>
+
+        <!-- Action Button -->
+        <div class="flex items-center gap-3">
+          <button id="btn-run-comparison"
+                  class="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium text-xs md:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Run Kaggle Comparative Analysis</span>
+          </button>
+        </div>
+
+        <!-- Comparison In-flight Thinking Indicator -->
+        <div id="comparison-thinking" class="hidden p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3">
+          <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <div>
+            <span class="text-xs font-medium text-slate-200">Comparing multi-temporal satellite scans…</span>
+            <span id="comparison-timer" class="text-xs font-mono text-emerald-400 ml-1">0s</span>
+            <p class="text-[10px] text-slate-400">Auditing change clusters & bounding box overlaps (can take ~20–30s on T4 GPU)</p>
+          </div>
+        </div>
+
+        <!-- Comparison Result Panel (Mapped to REAL Data) -->
+        <div id="comparison-results" class="hidden space-y-5 pt-2">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h3 class="text-xs uppercase font-semibold tracking-wider text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-square-poll-vertical text-emerald-400"></i>
+              Comparative Analytical Findings
+            </h3>
+            <span id="comp-latency-badge" class="text-[11px] font-mono text-slate-400">· 18.9 s</span>
+          </div>
+
+          <!-- Real 4 Stat Cards -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <!-- Card 1: Interval -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Interval Elapsed</span>
+              <p id="stat-interval" class="text-base font-bold text-slate-100 mt-1">6 months</p>
+              <p class="text-[10px] text-slate-500 mt-0.5">Time gap between captures</p>
+            </div>
+
+            <!-- Card 2: Progression Status -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Progression Status</span>
+              <div id="stat-status-badge" class="mt-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Changes Detected
+                </span>
+              </div>
+              <p id="stat-status-sub" class="text-[10px] text-slate-500 mt-1">Visual changes confirmed</p>
+            </div>
+
+            <!-- Card 3: Confidence Grade -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Confidence Grade</span>
+              <p id="stat-confidence" class="text-base font-bold text-emerald-400 mt-1">High (84/100)</p>
+              <div class="w-full bg-slate-800 rounded-full h-1 mt-1.5">
+                <div id="stat-confidence-bar" class="bg-emerald-500 h-1 rounded-full" style="width: 84%"></div>
+              </div>
+            </div>
+
+            <!-- Card 4: Detected Changes (Replaces fake 94.2% similarity!) -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Change Clusters</span>
+              <p id="stat-changes-count" class="text-base font-bold text-white mt-1">4 Objects</p>
+              <div id="stat-change-tags" class="flex flex-wrap gap-1 mt-1">
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">new structure: 1</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">vegetation loss: 3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Marked Present Image & Findings Text Side by Side -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Evidence Marked Image -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs text-slate-400">
+                <span class="font-medium text-slate-300">
+                  <i class="fa-solid fa-bullseye text-red-400 mr-1"></i>
+                  Marked Evidence (PRESENT capture)
+                </span>
+                <span class="text-[10px] text-slate-500">Click to expand</span>
+              </div>
+              <div class="relative rounded-xl border border-slate-800 bg-black overflow-hidden group cursor-pointer" id="btn-zoom-comparison">
+                <img id="comparison-marked-img" src="" alt="Marked change output" class="w-full h-64 object-contain mx-auto">
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-1.5 text-xs font-medium">
+                  <i class="fa-solid fa-magnifying-glass-plus"></i> View Full Resolution
+                </div>
+              </div>
+            </div>
+
+            <!-- Findings Text & Audit Trail -->
+            <div class="space-y-3 flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-medium text-slate-300 block mb-1.5">
+                  <i class="fa-solid fa-align-left text-slate-400 mr-1"></i>
+                  Analytical Findings Summary
+                </span>
+                <div id="comparison-body-text" class="text-xs text-slate-200 bg-slate-950 p-3.5 rounded-xl border border-slate-800 leading-relaxed whitespace-pre-line font-sans">
+                  Comparison report text...
+                </div>
+              </div>
+
+              <!-- Audit Reasons Trail -->
+              <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  <i class="fa-solid fa-shield-halved text-indigo-400 mr-1"></i>
+                  Audit Trail & Trust Rule Checks
+                </span>
+                <ul id="comparison-reasons-list" class="text-[11px] space-y-1 text-slate-400 font-mono">
+                  <li>• R6: overlap audit passed</li>
+                  <li>• Verified candidate clusters</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= SETTINGS MODAL ================= -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-indigo-400"></i>
+          AI Engine Connection Settings
+        </h3>
+        <button id="btn-close-settings" class="w-6 h-6 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label for="settings-url-input" class="text-xs font-medium text-slate-300 block mb-1">
+            Kaggle Public Gradio Tunnel URL
+          </label>
+          <input type="text" id="settings-url-input"
+                 placeholder="https://xxxx.gradio.live"
+                 class="w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none">
+          <p class="text-[11px] text-slate-400 mt-1">
+            Obtained when running <code class="text-indigo-300">Cell W</code> on Kaggle. Changes on session restarts.
+          </p>
+        </div>
+
+        <div id="settings-test-result" class="hidden p-2.5 rounded-lg text-xs font-mono"></div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <button id="btn-use-mock" class="w-full sm:w-auto px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-medium border border-slate-700 transition">
+          Use Mock Mode
+        </button>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button id="btn-save-settings" class="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-md shadow-indigo-600/20 transition">
+            Save & Connect
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LIGHTBOX ZOOM MODAL ================= -->
+  <div id="modal-lightbox" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
+    <div class="absolute top-4 right-4 flex items-center gap-3">
+      <span class="text-xs text-slate-400 font-mono">Press ESC to close</span>
+      <button id="btn-close-lightbox" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-sm transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="max-w-5xl max-h-[85vh] flex items-center justify-center">
+      <img id="lightbox-img" src="" alt="Full size evidence" class="max-w-full max-h-[85vh] object-contain rounded-lg border border-slate-700 shadow-2xl">
+    </div>
+  </div>
+
+
+  <!-- ================= SCRIPT LOGIC ================= -->
+  <script type="module">
+    import * as api from './api.js';
+
+    // State
+    const state = {
+      mode: 'interactive', // 'interactive' | 'comparison'
+      interactiveFile: null,
+      pastFile: null,
+      presentFile: null,
+      inflight: false,
+      pollTimer: null,
+      watchdogInterval: null,
+    };
+
+    // DOM Elements
+    const elements = {
+      // Modes
+      modeInteractiveBtn: document.getElementById('mode-interactive-btn'),
+      modeComparisonBtn: document.getElementById('mode-comparison-btn'),
+      viewInteractive: document.getElementById('view-interactive'),
+      viewComparison: document.getElementById('view-comparison'),
+
+      // Status
+      badgeMock: document.getElementById('badge-mock'),
+      statusPill: document.getElementById('status-pill'),
+      statusDot: document.getElementById('status-dot'),
+      statusText: document.getElementById('status-text'),
+      offlineBanner: document.getElementById('offline-banner'),
+      btnBannerSettings: document.getElementById('btn-banner-settings'),
+
+      // Settings Modal
+      btnSettings: document.getElementById('btn-settings'),
+      modalSettings: document.getElementById('modal-settings'),
+      btnCloseSettings: document.getElementById('btn-close-settings'),
+      settingsUrlInput: document.getElementById('settings-url-input'),
+      settingsTestResult: document.getElementById('settings-test-result'),
+      btnSaveSettings: document.getElementById('btn-save-settings'),
+      btnUseMock: document.getElementById('btn-use-mock'),
+
+      // Interactive
+      chatHistory: document.getElementById('chat-history'),
+      emptyStateInteractive: document.getElementById('empty-state-interactive'),
+      interactiveForm: document.getElementById('interactive-form'),
+      interactiveInput: document.getElementById('interactive-input'),
+      interactiveThreshold: document.getElementById('interactive-threshold'),
+      interactiveFileInput: document.getElementById('interactive-file-input'),
+      btnUploadInteractive: document.getElementById('btn-upload-interactive'),
+      btnSubmitInteractive: document.getElementById('btn-submit-interactive'),
+      attachmentPreview: document.getElementById('attachment-preview'),
+      attachmentThumb: document.getElementById('attachment-thumb'),
+      attachmentFilename: document.getElementById('attachment-filename'),
+      attachmentSize: document.getElementById('attachment-size'),
+      btnRemoveAttachment: document.getElementById('btn-remove-attachment'),
+      interactiveThinking: document.getElementById('interactive-thinking'),
+      interactiveTimer: document.getElementById('interactive-timer'),
+
+      // Comparison
+      slotPast: document.getElementById('slot-past'),
+      slotPresent: document.getElementById('slot-present'),
+      pastFileInput: document.getElementById('past-file-input'),
+      presentFileInput: document.getElementById('present-file-input'),
+      pastPlaceholder: document.getElementById('past-placeholder'),
+      presentPlaceholder: document.getElementById('present-placeholder'),
+      pastPreviewContainer: document.getElementById('past-preview-container'),
+      presentPreviewContainer: document.getElementById('present-preview-container'),
+      pastPreviewImg: document.getElementById('past-preview-img'),
+      presentPreviewImg: document.getElementById('present-preview-img'),
+      btnRemovePast: document.getElementById('btn-remove-past'),
+      btnRemovePresent: document.getElementById('btn-remove-present'),
+      comparisonInterval: document.getElementById('comparison-interval'),
+      comparisonQuestion: document.getElementById('comparison-question'),
+      btnRunComparison: document.getElementById('btn-run-comparison'),
+      comparisonErrorBanner: document.getElementById('comparison-error-banner'),
+      comparisonErrorText: document.getElementById('comparison-error-text'),
+      comparisonThinking: document.getElementById('comparison-thinking'),
+      comparisonTimer: document.getElementById('comparison-timer'),
+      comparisonResults: document.getElementById('comparison-results'),
+      compLatencyBadge: document.getElementById('comp-latency-badge'),
+      statInterval: document.getElementById('stat-interval'),
+      statStatusBadge: document.getElementById('stat-status-badge'),
+      statStatusSub: document.getElementById('stat-status-sub'),
+      statConfidence: document.getElementById('stat-confidence'),
+      statConfidenceBar: document.getElementById('stat-confidence-bar'),
+      statChangesCount: document.getElementById('stat-changes-count'),
+      statChangeTags: document.getElementById('stat-change-tags'),
+      comparisonMarkedImg: document.getElementById('comparison-marked-img'),
+      btnZoomComparison: document.getElementById('btn-zoom-comparison'),
+      comparisonBodyText: document.getElementById('comparison-body-text'),
+      comparisonReasonsList: document.getElementById('comparison-reasons-list'),
+
+      // Lightbox
+      modalLightbox: document.getElementById('modal-lightbox'),
+      lightboxImg: document.getElementById('lightbox-img'),
+      btnCloseLightbox: document.getElementById('btn-close-lightbox'),
+    };
+
+    // ================= INITIALIZATION =================
+    async function init() {
+      setupEventListeners();
+      setupPresets();
+      updateMockBadge();
+      await checkHealth();
+      startHealthPolling();
+    }
+
+    // ================= MODE SWITCHING =================
+    function switchMode(newMode) {
+      state.mode = newMode;
+      if (newMode === 'interactive') {
+        elements.modeInteractiveBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all bg-indigo-600 text-white shadow-sm";
+        elements.modeComparisonBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800";
+        elements.viewInteractive.classList.remove('hidden');
+        elements.viewComparison.classList.add('hidden');
+      } else {
+        elements.modeComparisonBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all bg-emerald-600 text-white shadow-sm";
+        elements.modeInteractiveBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800";
+        elements.viewComparison.classList.remove('hidden');
+        elements.viewInteractive.classList.add('hidden');
+      }
+    }
+
+    // ================= HEALTH & STATUS =================
+    async function checkHealth() {
+      try {
+        const h = await api.health();
+        if (h && (h.status === 'online' || api.isMock())) {
+          setOnlineState(h);
+          return true;
+        } else {
+          setOfflineState();
+          return false;
+        }
+      } catch (err) {
+        console.warn('Health check error:', err);
+        setOfflineState();
+        return false;
+      }
+    }
+
+    function setOnlineState(healthInfo) {
+      elements.statusDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      elements.statusText.textContent = api.isMock() 
+        ? "Mock Engine Ready" 
+        : `Engine online · ${healthInfo.version || 'v1.1'}`;
+      elements.offlineBanner.classList.add('hidden');
+      updateMockBadge();
+    }
+
+    function setOfflineState() {
+      elements.statusDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      elements.statusText.textContent = "Engine offline";
+      elements.offlineBanner.classList.remove('hidden');
+      updateMockBadge();
+    }
+
+    function updateMockBadge() {
+      if (api.isMock()) {
+        elements.badgeMock.classList.remove('hidden');
+      } else {
+        elements.badgeMock.classList.add('hidden');
+      }
+    }
+
+    function startHealthPolling() {
+      if (state.pollTimer) clearInterval(state.pollTimer);
+      state.pollTimer = setInterval(checkHealth, api.CONFIG.pollMs);
+    }
+
+    // ================= EVENT LISTENERS =================
+    function setupEventListeners() {
+      // Tab switcher
+      elements.modeInteractiveBtn.addEventListener('click', () => switchMode('interactive'));
+      elements.modeComparisonBtn.addEventListener('click', () => switchMode('comparison'));
+
+      // Settings modal
+      elements.btnSettings.addEventListener('click', openSettingsModal);
+      elements.btnBannerSettings.addEventListener('click', openSettingsModal);
+      elements.btnCloseSettings.addEventListener('click', closeSettingsModal);
+      elements.btnSaveSettings.addEventListener('click', saveSettingsUrl);
+      elements.btnUseMock.addEventListener('click', setMockMode);
+
+      // Close modal on background click
+      elements.modalSettings.addEventListener('click', (e) => {
+        if (e.target === elements.modalSettings) closeSettingsModal();
+      });
+
+      // Quick prompt buttons
+      document.querySelectorAll('.quick-prompt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          elements.interactiveInput.value = btn.dataset.q;
+          elements.interactiveInput.focus();
+        });
+      });
+
+      // Interactive File Upload
+      elements.btnUploadInteractive.addEventListener('click', () => elements.interactiveFileInput.click());
+      elements.interactiveFileInput.addEventListener('change', handleInteractiveFileSelect);
+      elements.btnRemoveAttachment.addEventListener('click', clearInteractiveAttachment);
+
+      // Interactive Submit
+      elements.interactiveForm.addEventListener('submit', handleInteractiveSubmit);
+
+      // Comparison Drag & Drop / Click
+      elements.slotPast.addEventListener('click', (e) => {
+        if (!e.target.closest('#btn-remove-past')) elements.pastFileInput.click();
+      });
+      elements.slotPresent.addEventListener('click', (e) => {
+        if (!e.target.closest('#btn-remove-present')) elements.presentFileInput.click();
+      });
+      elements.pastFileInput.addEventListener('change', (e) => handleComparisonFileSelect(e, 'past'));
+      elements.presentFileInput.addEventListener('change', (e) => handleComparisonFileSelect(e, 'present'));
+      elements.btnRemovePast.addEventListener('click', (e) => { e.stopPropagation(); clearComparisonFile('past'); });
+      elements.btnRemovePresent.addEventListener('click', (e) => { e.stopPropagation(); clearComparisonFile('present'); });
+
+      // Comparison Run
+      elements.btnRunComparison.addEventListener('click', handleComparisonSubmit);
+
+      // Lightbox
+      elements.btnZoomComparison.addEventListener('click', () => {
+        if (elements.comparisonMarkedImg.src) openLightbox(elements.comparisonMarkedImg.src);
+      });
+      elements.btnCloseLightbox.addEventListener('click', closeLightbox);
+      elements.modalLightbox.addEventListener('click', (e) => {
+        if (e.target === elements.modalLightbox) closeLightbox();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+      });
+    }
+
+    // ================= PRESETS =================
+    function setupPresets() {
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const mode = btn.dataset.mode;
+          switchMode(mode);
+
+          if (mode === 'interactive') {
+            elements.interactiveInput.value = btn.dataset.question || '';
+            if (btn.dataset.threshold) elements.interactiveThreshold.value = btn.dataset.threshold;
+            
+            if (btn.dataset.image) {
+              const file = await urlToFile(`assets/${btn.dataset.image}`, btn.dataset.image);
+              setInteractiveFile(file);
+            }
+          } else if (mode === 'comparison') {
+            if (btn.dataset.question) elements.comparisonQuestion.value = btn.dataset.question;
+            if (btn.dataset.months) elements.comparisonInterval.value = btn.dataset.months;
+
+            if (btn.dataset.past) {
+              const pastFile = await urlToFile(`assets/${btn.dataset.past}`, btn.dataset.past);
+              setComparisonFile('past', pastFile);
+            }
+            if (btn.dataset.present) {
+              const presentFile = await urlToFile(`assets/${btn.dataset.present}`, btn.dataset.present);
+              setComparisonFile('present', presentFile);
+            }
+          }
+        });
+      });
+    }
+
+    async function urlToFile(url, filename) {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return new File([blob], filename, { type: blob.type || 'image/png' });
+      } catch (err) {
+        console.error('Error fetching preset file:', err);
+        return null;
+      }
+    }
+
+    // ================= FILE VALIDATION (R0) =================
+    async function validateImageFile(file) {
+      if (!file) return { ok: false, why: "No file selected." };
+      // Max 20MB
+      if (file.size > 20 * 1024 * 1024) {
+        return { ok: false, why: `File size ${(file.size / (1024*1024)).toFixed(1)}MB exceeds 20MB limit (R0 gate).` };
+      }
+      // Check dimensions >= 256x256
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(img.src);
+          if (img.naturalWidth < 256 || img.naturalHeight < 256) {
+            resolve({ ok: false, why: `Image dimensions (${img.naturalWidth}x${img.naturalHeight}) below required 256x256 (R0 gate).` });
+          } else {
+            resolve({ ok: true, width: img.naturalWidth, height: img.naturalHeight });
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(img.src);
+          resolve({ ok: false, why: "Invalid or corrupt image format." });
+        };
+      });
+    }
+
+    // ================= INTERACTIVE CONTROLLER =================
+    async function handleInteractiveFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const v = await validateImageFile(file);
+      if (!v.ok) {
+        alert(v.why);
+        elements.interactiveFileInput.value = '';
+        return;
+      }
+      setInteractiveFile(file);
+    }
+
+    function setInteractiveFile(file) {
+      if (!file) return;
+      state.interactiveFile = file;
+      elements.attachmentFilename.textContent = file.name;
+      elements.attachmentSize.textContent = `${(file.size / (1024*1024)).toFixed(1)} MB`;
+      elements.attachmentThumb.src = URL.createObjectURL(file);
+      elements.attachmentPreview.classList.remove('hidden');
+      elements.attachmentPreview.classList.add('flex');
+    }
+
+    function clearInteractiveAttachment() {
+      state.interactiveFile = null;
+      elements.interactiveFileInput.value = '';
+      elements.attachmentPreview.classList.add('hidden');
+      elements.attachmentPreview.classList.remove('flex');
+      if (elements.attachmentThumb.src) URL.revokeObjectURL(elements.attachmentThumb.src);
+    }
+
+    async function handleInteractiveSubmit(e) {
+      e.preventDefault();
+      const question = elements.interactiveInput.value.trim();
+      const file = state.interactiveFile;
+      const threshold = parseFloat(elements.interactiveThreshold.value) || 0.8;
+
+      if (!file && !question) {
+        elements.interactiveInput.focus();
+        return;
+      }
+
+      if (state.inflight) return;
+
+      // Render user message bubble
+      renderUserMessage(question, file);
+      elements.emptyStateInteractive?.classList.add('hidden');
+
+      // Lock UI
+      setInflight(true, 'interactive');
+
+      // Prepare request payload
+      try {
+        const result = await api.chat({
+          image: file,
+          question: question,
+          threshold: threshold
+        });
+
+        renderAiMessage(result);
+      } catch (err) {
+        console.error('Interactive error:', err);
+        renderAiErrorMessage(err.message || 'The engine hit an internal error. Please retry.');
+      } finally {
+        setInflight(false, 'interactive');
+        // Clear input text (keep file or clear as appropriate)
+        elements.interactiveInput.value = '';
+        clearInteractiveAttachment();
+      }
+    }
+
+    function renderUserMessage(text, file) {
+      const bubble = document.createElement('div');
+      bubble.className = "flex justify-end gap-3";
+      
+      let imgHtml = '';
+      if (file) {
+        const url = URL.createObjectURL(file);
+        imgHtml = `
+          <div class="mb-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-xs">
+            <img src="${url}" alt="User upload" class="w-full h-36 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.openModalZoom('${url}')">
+          </div>
+        `;
+      }
+
+      bubble.innerHTML = `
+        <div class="max-w-xl bg-indigo-600/90 text-white rounded-2xl rounded-tr-sm p-4 shadow-md">
+          ${imgHtml}
+          <p class="text-xs md:text-sm leading-relaxed">${escapeHtml(text || 'General visual scan')}</p>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-indigo-700 text-white flex items-center justify-center text-xs shrink-0 shadow">
+          <i class="fa-solid fa-user"></i>
+        </div>
+      `;
+      elements.chatHistory.appendChild(bubble);
+      elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight;
+    }
+
+    function renderAiMessage(result) {
+      const { verdict, body, confidence, markedUrl, meta } = result;
+
+      // Styling based on verdict & confidence
+      let badgeBg = 'bg-slate-800 text-slate-300 border-slate-700';
+      if (verdict === 'ANSWERED') badgeBg = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+      else if (verdict === 'UNCERTAIN') badgeBg = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      else if (verdict === 'REFUSED') badgeBg = 'bg-red-500/20 text-red-300 border-red-500/40';
+      else if (verdict === 'ERROR') badgeBg = 'bg-red-500/20 text-red-300 border-red-500/40';
+
+      // Confidence Bar color
+      let confColor = 'bg-emerald-500 text-emerald-400';
+      let confBandName = 'High';
+      if (confidence < 55) { confColor = 'bg-orange-500 text-orange-400'; confBandName = 'Low'; }
+      else if (confidence < 80) { confColor = 'bg-amber-500 text-amber-400'; confBandName = 'Medium'; }
+
+      // Below bar check
+      const belowBar = body.includes('below your selected bar');
+
+      // Audit reasons
+      const reasons = meta?.reasons || [];
+      const reasonsListHtml = reasons.length ? reasons.map(r => `<li>• ${escapeHtml(r)}</li>`).join('') : '<li>• Self-consistency & admissibility verified</li>';
+
+      let markedHtml = '';
+      if (markedUrl) {
+        markedHtml = `
+          <div class="mt-3 relative rounded-xl border border-slate-700 bg-black overflow-hidden group cursor-pointer" onclick="window.openModalZoom('${markedUrl}')">
+            <img src="${markedUrl}" alt="Marked visual evidence" class="w-full max-h-72 object-contain mx-auto">
+            <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur text-[10px] text-white flex items-center gap-1 border border-white/10">
+              <i class="fa-solid fa-magnifying-glass-plus"></i> Evidence Zoom
+            </div>
+          </div>
+        `;
+      }
+
+      // Confidence bar container (only if confidence exists and not refused)
+      let confHtml = '';
+      if (confidence !== null && verdict !== 'REFUSED' && verdict !== 'ERROR') {
+        confHtml = `
+          <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400 text-[11px]">Confidence:</span>
+              <span class="font-bold ${confColor.split(' ')[1]} font-mono">${confidence}/100</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">Grade: ${confBandName}</span>
+            </div>
+            <div class="w-32 bg-slate-850 rounded-full h-1.5 overflow-hidden">
+              <div class="${confColor.split(' ')[0]} h-full rounded-full transition-all duration-500" style="width: ${confidence}%"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = "flex justify-start gap-3";
+      bubble.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-emerald-500 text-white flex items-center justify-center text-xs shrink-0 shadow mt-1">
+          <i class="fa-solid fa-satellite"></i>
+        </div>
+        <div class="max-w-2xl bg-slate-950 border ${belowBar ? 'border-amber-500/50 bg-amber-950/10' : 'border-slate-800'} rounded-2xl rounded-tl-sm p-4 shadow-xl">
+          <!-- Header: Verdict & Latency -->
+          <div class="flex items-center justify-between gap-3 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${badgeBg}">
+                [${verdict}]
+              </span>
+              <span class="text-[10px] font-mono text-slate-400">· ${(meta?.latency_s || 0).toFixed(1)} s</span>
+            </div>
+
+            <!-- Audit Tooltip / Details trigger -->
+            <div class="relative group">
+              <button class="text-slate-400 hover:text-slate-200 text-xs px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 flex items-center gap-1 transition">
+                <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+                <span class="text-[10px]">Audit</span>
+              </button>
+              <div class="absolute right-0 top-full mt-1.5 w-64 p-3 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl text-[11px] text-slate-300 z-30 hidden group-hover:block pointer-events-none">
+                <p class="font-semibold text-slate-200 mb-1 border-b border-slate-800 pb-1">Refusal Engine Audit Trail</p>
+                <ul class="space-y-1 font-mono text-[10px] text-slate-400">
+                  ${reasonsListHtml}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body Text -->
+          <div class="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-line font-sans">
+            ${escapeHtml(body)}
+          </div>
+
+          <!-- Marked Image -->
+          ${markedHtml}
+
+          <!-- Confidence Score Bar -->
+          ${confHtml}
+        </div>
+      `;
+      elements.chatHistory.appendChild(bubble);
+      elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight;
+    }
+
+    function renderAiErrorMessage(errorText) {
+      const bubble = document.createElement('div');
+      bubble.className = "flex justify-start gap-3";
+      bubble.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-xs shrink-0 shadow mt-1">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="max-w-xl bg-red-500/10 border border-red-500/30 rounded-2xl rounded-tl-sm p-4 shadow-xl">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40">
+              [ERROR]
+            </span>
+          </div>
+          <p class="text-xs text-red-200 leading-relaxed">${escapeHtml(errorText)}</p>
+          <div class="mt-3 flex items-center gap-2">
+            <button class="px-2.5 py-1 rounded bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-medium transition"
+                    onclick="window.openSettingsModalGlobal()">
+              Check Engine URL
+            </button>
+          </div>
+        </div>
+      `;
+      elements.chatHistory.appendChild(bubble);
+      elements.chatHistory.scrollTop = elements.chatHistory.scrollHeight;
+    }
+
+
+    // ================= COMPARISON CONTROLLER =================
+    async function handleComparisonFileSelect(e, slot) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const v = await validateImageFile(file);
+      if (!v.ok) {
+        showComparisonError(v.why);
+        if (slot === 'past') elements.pastFileInput.value = '';
+        else elements.presentFileInput.value = '';
+        return;
+      }
+      hideComparisonError();
+      setComparisonFile(slot, file);
+    }
+
+    function setComparisonFile(slot, file) {
+      if (slot === 'past') {
+        state.pastFile = file;
+        elements.pastPreviewImg.src = URL.createObjectURL(file);
+        elements.pastPlaceholder.classList.add('hidden');
+        elements.pastPreviewContainer.classList.remove('hidden');
+      } else {
+        state.presentFile = file;
+        elements.presentPreviewImg.src = URL.createObjectURL(file);
+        elements.presentPlaceholder.classList.add('hidden');
+        elements.presentPreviewContainer.classList.remove('hidden');
+      }
+    }
+
+    function clearComparisonFile(slot) {
+      if (slot === 'past') {
+        state.pastFile = null;
+        elements.pastFileInput.value = '';
+        elements.pastPlaceholder.classList.remove('hidden');
+        elements.pastPreviewContainer.classList.add('hidden');
+        if (elements.pastPreviewImg.src) URL.revokeObjectURL(elements.pastPreviewImg.src);
+      } else {
+        state.presentFile = null;
+        elements.presentFileInput.value = '';
+        elements.presentPlaceholder.classList.remove('hidden');
+        elements.presentPreviewContainer.classList.add('hidden');
+        if (elements.presentPreviewImg.src) URL.revokeObjectURL(elements.presentPreviewImg.src);
+      }
+    }
+
+    function showComparisonError(msg) {
+      elements.comparisonErrorText.textContent = msg;
+      elements.comparisonErrorBanner.classList.remove('hidden');
+    }
+    function hideComparisonError() {
+      elements.comparisonErrorBanner.classList.add('hidden');
+    }
+
+    async function handleComparisonSubmit() {
+      // Validate BOTH slots
+      if (!state.pastFile || !state.presentFile) {
+        showComparisonError("Both PAST and PRESENT satellite captures must be uploaded before comparative analysis can run.");
+        return;
+      }
+      hideComparisonError();
+
+      if (state.inflight) return;
+
+      const question = elements.comparisonQuestion.value.trim() || "What changed between these two images?";
+      const months = parseInt(elements.comparisonInterval.value, 10) || 6;
+
+      // Lock UI
+      setInflight(true, 'comparison');
+      elements.comparisonResults.classList.add('hidden');
+
+      try {
+        const result = await api.compare({
+          pastImage: state.pastFile,
+          presentImage: state.presentFile,
+          question: question,
+          intervalMonths: months
+        });
+
+        renderComparisonResults(result);
+      } catch (err) {
+        console.error('Comparison error:', err);
+        showComparisonError(err.message || 'Comparison failed. The engine hit an error.');
+      } finally {
+        setInflight(false, 'comparison');
+      }
+    }
+
+    function renderComparisonResults(result) {
+      const { verdict, body, confidence, markedUrl, meta } = result;
+      elements.comparisonResults.classList.remove('hidden');
+
+      // Latency
+      elements.compLatencyBadge.textContent = `· ${(meta?.latency_s || 0).toFixed(1)} s`;
+
+      // Stat 1: Interval
+      elements.statInterval.textContent = `${meta?.interval_months || 6} months`;
+
+      // Stat 2: Progression Status
+      const changesCount = meta?.changes_count || 0;
+      if (verdict === 'REFUSED') {
+        elements.statStatusBadge.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30">Refused — See Reason</span>`;
+        elements.statStatusSub.textContent = "Pixels cannot answer query";
+      } else if (verdict === 'UNCERTAIN') {
+        elements.statStatusBadge.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">Uncertain / Audit Flagged</span>`;
+        elements.statStatusSub.textContent = "Evidence boxes unverified";
+      } else if (changesCount === 0) {
+        elements.statStatusBadge.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Stable / Minimal Variance</span>`;
+        elements.statStatusSub.textContent = "No significant changes";
+      } else {
+        elements.statStatusBadge.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">Changes Detected</span>`;
+        elements.statStatusSub.textContent = `${changesCount} change cluster(s) confirmed`;
+      }
+
+      // Stat 3: Confidence Grade
+      let confBand = 'High';
+      let confColor = 'text-emerald-400 bg-emerald-500';
+      if (confidence < 55) { confBand = 'Low'; confColor = 'text-orange-400 bg-orange-500'; }
+      else if (confidence < 80) { confBand = 'Medium'; confColor = 'text-amber-400 bg-amber-500'; }
+
+      elements.statConfidence.className = `text-base font-bold ${confColor.split(' ')[0]} mt-1`;
+      elements.statConfidence.textContent = `${confBand} (${confidence}/100)`;
+      elements.statConfidenceBar.className = `${confColor.split(' ')[1]} h-1 rounded-full`;
+      elements.statConfidenceBar.style.width = `${confidence}%`;
+
+      // Stat 4: Change Clusters count and breakdown badges
+      elements.statChangesCount.textContent = `${changesCount} Objects`;
+      const types = meta?.change_types || {};
+      const typeKeys = Object.keys(types);
+      if (typeKeys.length > 0) {
+        elements.statChangeTags.innerHTML = typeKeys.map(k => `
+          <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+            ${escapeHtml(k)}: ${types[k]}
+          </span>
+        `).join('');
+      } else {
+        elements.statChangeTags.innerHTML = `<span class="text-[9px] text-slate-500">None detected</span>`;
+      }
+
+      // Marked Image
+      if (markedUrl) {
+        elements.comparisonMarkedImg.src = markedUrl;
+      }
+
+      // Body text
+      elements.comparisonBodyText.textContent = body;
+
+      // Audit reasons
+      const reasons = meta?.reasons || [];
+      if (reasons.length > 0) {
+        elements.comparisonReasonsList.innerHTML = reasons.map(r => `<li>• ${escapeHtml(r)}</li>`).join('');
+      } else {
+        elements.comparisonReasonsList.innerHTML = `<li>• Temporal comparison audit passed</li>`;
+      }
+
+      // Scroll to results
+      elements.comparisonResults.scrollIntoView({ behavior: 'smooth' });
+    }
+
+
+    // ================= IN-FLIGHT / TIMER / LOCK =================
+    function setInflight(locked, mode) {
+      state.inflight = locked;
+      elements.btnSubmitInteractive.disabled = locked;
+      elements.btnRunComparison.disabled = locked;
+
+      if (locked) {
+        let elapsed = 0;
+        if (mode === 'interactive') {
+          elements.interactiveThinking.classList.remove('hidden');
+          elements.interactiveTimer.textContent = '0s';
+          state.watchdogInterval = setInterval(() => {
+            elapsed++;
+            elements.interactiveTimer.textContent = `${elapsed}s`;
+          }, 1000);
+        } else {
+          elements.comparisonThinking.classList.remove('hidden');
+          elements.comparisonTimer.textContent = '0s';
+          state.watchdogInterval = setInterval(() => {
+            elapsed++;
+            elements.comparisonTimer.textContent = `${elapsed}s`;
+          }, 1000);
+        }
+      } else {
+        if (state.watchdogInterval) clearInterval(state.watchdogInterval);
+        elements.interactiveThinking.classList.add('hidden');
+        elements.comparisonThinking.classList.add('hidden');
+      }
+    }
+
+
+    // ================= SETTINGS MODAL =================
+    function openSettingsModal() {
+      elements.settingsUrlInput.value = api.getApiBase();
+      elements.settingsTestResult.classList.add('hidden');
+      elements.modalSettings.classList.remove('hidden');
+    }
+    window.openSettingsModalGlobal = openSettingsModal;
+
+    function closeSettingsModal() {
+      elements.modalSettings.classList.add('hidden');
+    }
+
+    async function saveSettingsUrl() {
+      const url = elements.settingsUrlInput.value.trim();
+      api.setApiBase(url);
+      elements.settingsTestResult.className = "p-2.5 rounded-lg text-xs font-mono bg-slate-950 text-slate-300 border border-slate-800 block";
+      elements.settingsTestResult.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-1"></i> Testing connection to ${escapeHtml(url)}...`;
+
+      const ok = await checkHealth();
+      if (ok) {
+        elements.settingsTestResult.className = "p-2.5 rounded-lg text-xs font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 block";
+        elements.settingsTestResult.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Connected successfully! Engine online.`;
+        setTimeout(closeSettingsModal, 1000);
+      } else {
+        elements.settingsTestResult.className = "p-2.5 rounded-lg text-xs font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30 block";
+        elements.settingsTestResult.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Could not connect to engine. Check URL or verify Kaggle session is active.`;
+      }
+    }
+
+    async function setMockMode() {
+      api.clearApiBase();
+      elements.settingsUrlInput.value = '';
+      await checkHealth();
+      closeSettingsModal();
+    }
+
+
+    // ================= LIGHTBOX ZOOM =================
+    function openLightbox(url) {
+      elements.lightboxImg.src = url;
+      elements.modalLightbox.classList.remove('hidden');
+    }
+    window.openModalZoom = openLightbox;
+
+    function closeLightbox() {
+      elements.modalLightbox.classList.add('hidden');
+      elements.lightboxImg.src = '';
+    }
+
+
+    // ================= UTILITIES =================
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>

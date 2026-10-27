@@ -1,0 +1,9 @@
+# SatQuery Backend & Kaggle Engine Dependencies (Contract v1.1)
+gradio>=5.0.0
+gradio_client>=1.0.0
+Pillow>=10.0.0
+torch
+transformers
+qwen-vl-utils
+requests
+supabase
