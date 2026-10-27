@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Lenis from 'lenis';
 import {
   ArrowRight,
   Upload,
@@ -19,12 +20,17 @@ import {
  * ============================================================================
  */
 export const SCRUB = {
-  SCROLL_LENGTH_VH: 800,       // total scroll distance driving the video (desktop)
+  SCROLL_LENGTH_VH: 800,        // total scroll distance driving the video (desktop)
   MOBILE_SCROLL_LENGTH_VH: 500, // total scroll distance driving the video (mobile)
-  SMOOTHING_MS: 1400,          // smoothing time constant (~1.4s ease)
-  LERP_FACTOR: 0.045,          // per-frame easing (smaller = smoother)
-  SECTION_FADE_MS: 1200,       // crossfade between content chapters
-  MAX_SEEK_STEP_S: 0.12,       // maximum seek step delta per frame
+  SMOOTHING_MS: 1400,           // smoothing time constant (~1.4s ease)
+  LERP_FACTOR: 0.045,           // per-frame easing (smaller = smoother)
+  SECTION_FADE_MS: 1200,        // crossfade between content chapters
+  MAX_SEEK_STEP_S: 0.12,        // maximum seek step delta per frame
+  FPS: 30,                      // frame rate for frame-grid quantisation
+  WHEEL_MULTIPLIER: 0.8,        // Lenis wheel input multiplier
+  LENIS_DURATION: 1.6,          // Lenis smoothing duration in seconds
+  MODE: 'video' as 'video' | 'frames', // 'video' (HTML5 video) or 'frames' (canvas image sequence)
+  TOTAL_FRAMES: 240,            // Total extracted frames for 'frames' mode
 };
 
 interface AboutPageProps {
@@ -34,6 +40,8 @@ interface AboutPageProps {
 export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
 
   // Chapter DOM refs for 60fps direct RAF style mutations (zero React re-render lag)
   const ch0Ref = useRef<HTMLDivElement>(null);
@@ -42,14 +50,42 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
   const ch3Ref = useRef<HTMLDivElement>(null);
   const ch4Ref = useRef<HTMLDivElement>(null);
 
+  // Step 0: Debug HUD refs (toggle with ?debug=1)
+  const debugOverlayRef = useRef<HTMLDivElement>(null);
+  const debugProgressRef = useRef<HTMLSpanElement>(null);
+  const debugTargetTimeRef = useRef<HTMLSpanElement>(null);
+  const debugCurrentTimeRef = useRef<HTMLSpanElement>(null);
+  const debugSeekingRef = useRef<HTMLSpanElement>(null);
+  const debugReadyStateRef = useRef<HTMLSpanElement>(null);
+  const debugMsBetweenSeeksRef = useRef<HTMLSpanElement>(null);
+
+  // Frames mode cache
+  const framesCacheRef = useRef<Map<number, HTMLImageElement>>(new Map());
+  const lastDrawnFrameRef = useRef<number>(-1);
+
   const [videoReady, setVideoReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [videoSource, setVideoSource] = useState('/assets/back.mp4');
 
-  // Detect mobile & reduced motion preferences
+  // Check URL query param ?debug=1
+  const [showDebug] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('debug') === '1';
+  });
+
+  // Detect mobile, reduced motion, and runtime video source
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Try to load earth-scrub-mobile.mp4 if mobile, else earth-scrub.mp4
+      // Fallback gracefully to /assets/back.mp4 if not yet generated
+      const testImg = new Image();
+      testImg.src = mobile ? '/earth-scrub-mobile.mp4' : '/earth-scrub.mp4';
+      // Default to /assets/back.mp4 initially unless earth-scrub exists
+    };
     checkMobile();
     window.addEventListener('resize', checkMobile);
 
@@ -64,53 +100,69 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     };
   }, []);
 
-  // Main high-performance scroll & video scrub loop
+  // Preload frame 1 for canvas frames fallback mode
+  useEffect(() => {
+    if (SCRUB.MODE === 'frames') {
+      const img1 = new Image();
+      img1.src = '/frames/f_0001.webp';
+      img1.onload = () => {
+        framesCacheRef.current.set(1, img1);
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            canvasRef.current.width = window.innerWidth * dpr;
+            canvasRef.current.height = window.innerHeight * dpr;
+            ctx.drawImage(img1, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          }
+        }
+      };
+    }
+  }, []);
+
+  // Main single-rAF scroll & seek-gated scrub loop
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || reducedMotion) return;
+    if (reducedMotion) return;
 
-    video.muted = true;
-    video.playsInline = true;
-    video.pause();
+    if (video) {
+      video.muted = true;
+      video.playsInline = true;
+      video.pause();
+    }
 
-    let targetProgress = 0;
-    let easedProgress = 0;
+    // Step 1: Initialise Lenis to normalise wheel and trackpad input
+    const lenis = new Lenis({
+      duration: SCRUB.LENIS_DURATION,
+      smoothWheel: true,
+      wheelMultiplier: SCRUB.WHEEL_MULTIPLIER,
+      touchMultiplier: 1.2,
+      syncTouch: false,
+    });
+    lenisRef.current = lenis;
+
+    let currentVideoTime = 0;
+    let lastSeekTime = 0;
+    let lastSeekInterval = 0;
     let rafId: number;
 
     const handleLoaded = () => {
       setVideoReady(true);
-      video.pause();
+      if (video) video.pause();
     };
 
-    video.addEventListener('loadedmetadata', handleLoaded);
-    video.addEventListener('canplay', handleLoaded);
-
-    if (video.readyState >= 1) {
-      handleLoaded();
+    if (video) {
+      video.addEventListener('loadedmetadata', handleLoaded);
+      video.addEventListener('canplay', handleLoaded);
+      if (video.readyState >= 1) {
+        handleLoaded();
+      }
     }
 
-    const onScroll = () => {
-      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-      const totalScrollable = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScrollable > 0) {
-        targetProgress = Math.min(Math.max(scrollY / totalScrollable, 0), 1);
-      }
-    };
-
-    // Fast seek callback on seek completion
-    const onSeeked = () => {
-      if (!video || !isFinite(video.duration)) return;
-      const targetTime = targetProgress * video.duration;
-      if (Math.abs(targetTime - video.currentTime) > 0.02) {
-        video.currentTime = targetTime;
-      }
-    };
-
-    video.addEventListener('seeked', onSeeked);
-
-    // Direct chapter opacity & transform calculator (no CSS transition fighting)
+    // Direct chapter opacity & transform calculator (zero CSS transition fighting, zero React re-renders)
     const updateChapter = (
       el: HTMLDivElement | null,
+      progress: number,
       start: number,
       peakStart: number,
       peakEnd: number,
@@ -120,20 +172,20 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       let opacity = 0;
       let translateY = 20;
 
-      if (easedProgress >= start && easedProgress <= end) {
-        if (easedProgress < peakStart) {
-          const f = (easedProgress - start) / (peakStart - start);
+      if (progress >= start && progress <= end) {
+        if (progress < peakStart) {
+          const f = (progress - start) / (peakStart - start);
           opacity = f;
           translateY = 20 * (1 - f);
-        } else if (easedProgress <= peakEnd) {
+        } else if (progress <= peakEnd) {
           opacity = 1;
           translateY = 0;
         } else {
-          const f = (easedProgress - peakEnd) / (end - peakEnd);
+          const f = (progress - peakEnd) / (end - peakEnd);
           opacity = 1 - f;
           translateY = -20 * f;
         }
-      } else if (easedProgress > end) {
+      } else if (progress > end) {
         opacity = 0;
         translateY = -20;
       }
@@ -144,54 +196,173 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       el.style.visibility = opacity > 0.005 ? 'visible' : 'hidden';
     };
 
-    const scrubLoop = () => {
-      // 1. Ease progress with LERP_FACTOR for silky motion
-      const progressDiff = targetProgress - easedProgress;
-      easedProgress += progressDiff * SCRUB.LERP_FACTOR;
+    // Draw canvas image sequence (Step 4 fallback)
+    const drawCanvasFrame = (progress: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-      // 2. Video frame seek & subtle slow zoom (scale 1.0 to 1.06)
-      if (video) {
-        const scale = 1.0 + easedProgress * 0.06;
-        video.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
+      const total = SCRUB.TOTAL_FRAMES;
+      const frameIdx = Math.min(Math.max(Math.floor(progress * (total - 1)) + 1, 1), total);
 
-        if (isFinite(video.duration) && video.duration > 0) {
-          const targetVideoTime = easedProgress * video.duration;
-          if (!video.seeking && Math.abs(targetVideoTime - video.currentTime) > 0.012) {
-            video.currentTime = targetVideoTime;
-          }
+      if (frameIdx === lastDrawnFrameRef.current) return;
+
+      const padded = String(frameIdx).padStart(4, '0');
+      const src = `/frames/f_${padded}.webp`;
+
+      let img = framesCacheRef.current.get(frameIdx);
+      if (!img) {
+        img = new Image();
+        img.src = src;
+        framesCacheRef.current.set(frameIdx, img);
+      }
+
+      // Preload next 5 frames
+      for (let offset = 1; offset <= 5; offset++) {
+        const nextIdx = frameIdx + offset;
+        if (nextIdx <= total && !framesCacheRef.current.has(nextIdx)) {
+          const preImg = new Image();
+          preImg.src = `/frames/f_${String(nextIdx).padStart(4, '0')}.webp`;
+          framesCacheRef.current.set(nextIdx, preImg);
         }
       }
 
-      // 3. Direct DOM updates for chapters without triggering React re-renders
-      updateChapter(ch0Ref.current, 0.00, 0.00, 0.17, 0.27);
-      updateChapter(ch1Ref.current, 0.20, 0.28, 0.42, 0.50);
-      updateChapter(ch2Ref.current, 0.44, 0.52, 0.66, 0.74);
-      updateChapter(ch3Ref.current, 0.68, 0.76, 0.88, 0.94);
-      updateChapter(ch4Ref.current, 0.88, 0.95, 1.00, 1.00);
+      if (img.complete && img.naturalWidth > 0) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          lastDrawnFrameRef.current = frameIdx;
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          const w = window.innerWidth * dpr;
+          const h = window.innerHeight * dpr;
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+          }
 
-      rafId = requestAnimationFrame(scrubLoop);
+          // Cover-fit math
+          const imgRatio = img.naturalWidth / img.naturalHeight;
+          const canvasRatio = w / h;
+          let drawW = w;
+          let drawH = h;
+          let offX = 0;
+          let offY = 0;
+
+          if (canvasRatio > imgRatio) {
+            drawW = w;
+            drawH = w / imgRatio;
+            offY = (h - drawH) / 2;
+          } else {
+            drawH = h;
+            drawW = h * imgRatio;
+            offX = (w - drawW) / 2;
+          }
+
+          ctx.drawImage(img, offX, offY, drawW, drawH);
+        }
+      }
     };
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    onScroll();
-    rafId = requestAnimationFrame(scrubLoop);
+    // The single, unified rAF loop driving Lenis and video scrubbing
+    const singleRafLoop = (time: number) => {
+      // 1. Advance Lenis smooth scroll
+      lenis.raf(time);
+
+      // Read normalized scroll progress directly from Lenis (no getBoundingClientRect or DOM reads)
+      const progress = lenis.limit > 0 ? Math.min(Math.max(lenis.scroll / lenis.limit, 0), 1) : 0;
+
+      // 2. Video mode scrubbing (Step 3: Seek-gated scrubbing)
+      let targetTime = 0;
+      if (SCRUB.MODE === 'video' && video && isFinite(video.duration) && video.duration > 0) {
+        // target = progress * video.duration
+        targetTime = progress * video.duration;
+
+        // current += (target - current) * SCRUB.LERP_FACTOR
+        currentVideoTime += (targetTime - currentVideoTime) * SCRUB.LERP_FACTOR;
+
+        // quantise to the frame grid: t = Math.round(current * FPS) / FPS
+        const t = Math.round(currentVideoTime * SCRUB.FPS) / SCRUB.FPS;
+
+        // ONLY set video.currentTime when ALL are true:
+        // !video.seeking, readyState >= 2, and |video.currentTime - t| >= 0.5/FPS
+        const diff = t - video.currentTime;
+        if (!video.seeking && video.readyState >= 2 && Math.abs(diff) >= (0.5 / SCRUB.FPS)) {
+          // clamp each step with SCRUB.MAX_SEEK_STEP_S
+          const step = Math.sign(diff) * Math.min(Math.abs(diff), SCRUB.MAX_SEEK_STEP_S);
+          const nextTime = Math.max(0, Math.min(video.duration, video.currentTime + step));
+
+          const now = performance.now();
+          if (lastSeekTime > 0) {
+            lastSeekInterval = now - lastSeekTime;
+          }
+          lastSeekTime = now;
+
+          // use video.fastSeek(t) when it exists, otherwise currentTime = t
+          if (typeof (video as any).fastSeek === 'function') {
+            (video as any).fastSeek(nextTime);
+          } else {
+            video.currentTime = nextTime;
+          }
+        }
+
+        // Slow zoom (scale 1.0 to 1.06)
+        const scale = 1.0 + progress * 0.06;
+        video.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
+      } else if (SCRUB.MODE === 'frames') {
+        // Step 4: Canvas Image Sequence
+        drawCanvasFrame(progress);
+      }
+
+      // 3. Direct DOM style updates for chapters (zero React re-renders, zero CSS transition conflicts)
+      updateChapter(ch0Ref.current, progress, 0.00, 0.00, 0.17, 0.27);
+      updateChapter(ch1Ref.current, progress, 0.20, 0.28, 0.42, 0.50);
+      updateChapter(ch2Ref.current, progress, 0.44, 0.52, 0.66, 0.74);
+      updateChapter(ch3Ref.current, progress, 0.68, 0.76, 0.88, 0.94);
+      updateChapter(ch4Ref.current, progress, 0.88, 0.95, 1.00, 1.00);
+
+      // 4. Update Step 0 Debug Overlay (zero React re-renders)
+      if (showDebug) {
+        if (debugProgressRef.current) {
+          debugProgressRef.current.textContent = (progress * 100).toFixed(1) + '%';
+        }
+        if (debugTargetTimeRef.current) {
+          debugTargetTimeRef.current.textContent = targetTime.toFixed(3) + 's';
+        }
+        if (debugCurrentTimeRef.current && video) {
+          debugCurrentTimeRef.current.textContent = video.currentTime.toFixed(3) + 's';
+        }
+        if (debugSeekingRef.current && video) {
+          debugSeekingRef.current.textContent = String(video.seeking);
+          debugSeekingRef.current.className = video.seeking ? 'text-amber-400 font-bold' : 'text-emerald-400';
+        }
+        if (debugReadyStateRef.current && video) {
+          debugReadyStateRef.current.textContent = `${video.readyState} (${
+            video.readyState === 4 ? 'HAVE_ENOUGH_DATA' : video.readyState === 2 ? 'HAVE_CURRENT_DATA' : 'BUFFERING'
+          })`;
+        }
+        if (debugMsBetweenSeeksRef.current) {
+          debugMsBetweenSeeksRef.current.textContent = lastSeekInterval > 0 ? `${lastSeekInterval.toFixed(0)}ms` : 'idle';
+        }
+      }
+
+      rafId = requestAnimationFrame(singleRafLoop);
+    };
+
+    rafId = requestAnimationFrame(singleRafLoop);
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      video.removeEventListener('loadedmetadata', handleLoaded);
-      video.removeEventListener('canplay', handleLoaded);
-      video.removeEventListener('seeked', onSeeked);
       cancelAnimationFrame(rafId);
+      lenis.destroy();
+      if (video) {
+        video.removeEventListener('loadedmetadata', handleLoaded);
+        video.removeEventListener('canplay', handleLoaded);
+      }
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, showDebug]);
 
-  // Smooth scroll to Chapter 2 ("See how it works")
+  // Smooth scroll to Chapter 2 via Lenis
   const scrollToHowItWorks = () => {
-    const totalScrollable = document.documentElement.scrollHeight - window.innerHeight;
-    const targetY = totalScrollable * 0.30;
-    window.scrollTo({ top: targetY, behavior: 'smooth' });
+    if (lenisRef.current && lenisRef.current.limit > 0) {
+      lenisRef.current.scrollTo(lenisRef.current.limit * 0.30);
+    }
   };
 
   const totalVh = isMobile ? SCRUB.MOBILE_SCROLL_LENGTH_VH : SCRUB.SCROLL_LENGTH_VH;
@@ -203,18 +374,35 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       className="relative w-full bg-[#02040A] text-[#C9D3EA] selection:bg-cyan-500/30 selection:text-cyan-200"
     >
       {/* ===================================================================
-          1. FULL-BLEED FIXED BACKGROUND VIDEO (Visible in 85%+ of viewport)
+          1. FULL-BLEED FIXED BACKGROUND VIDEO / CANVAS (Visible in 85%+ viewport)
           =================================================================== */}
       <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none">
-        {!reducedMotion ? (
+        {reducedMotion ? (
+          <img
+            src="/assets/earth-horizon.png"
+            alt="Earth orbital horizon"
+            className="w-full h-full object-cover object-center opacity-90"
+          />
+        ) : SCRUB.MODE === 'frames' ? (
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full object-cover object-center"
+            style={{ opacity: 0.95 }}
+          />
+        ) : (
           <video
             ref={videoRef}
-            src="/assets/back.mp4"
+            src={videoSource}
             poster="/assets/earth-horizon.png"
             muted
             playsInline
             preload="auto"
             disablePictureInPicture
+            onError={() => {
+              if (videoSource !== '/assets/back.mp4') {
+                setVideoSource('/assets/back.mp4');
+              }
+            }}
             className="w-full h-full object-cover object-center"
             style={{
               opacity: videoReady ? 0.95 : 0.6,
@@ -222,14 +410,54 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
               transition: 'opacity 800ms ease',
             }}
           />
-        ) : (
-          <img
-            src="/assets/earth-horizon.png"
-            alt="Earth orbital horizon"
-            className="w-full h-full object-cover object-center opacity-90"
-          />
         )}
       </div>
+
+      {/* ===================================================================
+          STEP 0: DIAGNOSTIC DEBUG OVERLAY (?debug=1)
+          =================================================================== */}
+      {showDebug && (
+        <div
+          ref={debugOverlayRef}
+          className="fixed bottom-6 right-6 z-[100] bg-slate-950/90 border border-cyan-500/50 rounded-2xl p-4 font-mono text-xs text-cyan-300 shadow-2xl backdrop-blur-xl pointer-events-none select-none space-y-1.5 min-w-[260px]"
+        >
+          <div className="font-bold text-white border-b border-white/10 pb-1.5 mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              SCRUB DIAGNOSTICS
+            </span>
+            <span className="text-[10px] bg-cyan-500/20 px-1.5 py-0.5 rounded text-cyan-300">?debug=1</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Scroll Progress:</span>
+            <span ref={debugProgressRef} className="font-bold text-white">0.0%</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Target Time:</span>
+            <span ref={debugTargetTimeRef}>0.000s</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Current Time:</span>
+            <span ref={debugCurrentTimeRef}>0.000s</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">video.seeking:</span>
+            <span ref={debugSeekingRef}>false</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">readyState:</span>
+            <span ref={debugReadyStateRef}>0</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">ms between seeks:</span>
+            <span ref={debugMsBetweenSeeksRef}>idle</span>
+          </div>
+          <div className="flex justify-between pt-1.5 border-t border-white/10 text-[10px] text-slate-400">
+            <span>Engine Mode:</span>
+            <span className="text-cyan-400 font-bold uppercase">{SCRUB.MODE}</span>
+          </div>
+        </div>
+      )}
 
       {/* ===================================================================
           2. STICKY VIEWPORT CONTAINER (Hosts overlapping chapters)
