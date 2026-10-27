@@ -19,12 +19,12 @@ import {
  * ============================================================================
  */
 export const SCRUB = {
-  SCROLL_LENGTH_VH: 800,      // total scroll distance driving the video (desktop)
-  MOBILE_SCROLL_LENGTH_VH: 500,// total scroll distance driving the video (mobile)
-  SMOOTHING_MS: 1400,         // smoothing time constant (target eased over ~1.4s)
-  LERP_FACTOR: 0.045,         // per-frame easing (smaller = smoother)
-  SECTION_FADE_MS: 1200,      // crossfade between content chapters
-  MAX_SEEK_STEP_S: 0.12,      // never jump currentTime more than this per frame
+  SCROLL_LENGTH_VH: 800,       // total scroll distance driving the video (desktop)
+  MOBILE_SCROLL_LENGTH_VH: 500, // total scroll distance driving the video (mobile)
+  SMOOTHING_MS: 1400,          // smoothing time constant (~1.4s ease)
+  LERP_FACTOR: 0.045,          // per-frame easing (smaller = smoother)
+  SECTION_FADE_MS: 1200,       // crossfade between content chapters
+  MAX_SEEK_STEP_S: 0.12,       // maximum seek step delta per frame
 };
 
 interface AboutPageProps {
@@ -32,17 +32,22 @@ interface AboutPageProps {
 }
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Chapter DOM refs for 60fps direct RAF style mutations (zero React re-render lag)
+  const ch0Ref = useRef<HTMLDivElement>(null);
+  const ch1Ref = useRef<HTMLDivElement>(null);
+  const ch2Ref = useRef<HTMLDivElement>(null);
+  const ch3Ref = useRef<HTMLDivElement>(null);
+  const ch4Ref = useRef<HTMLDivElement>(null);
 
   const [videoReady, setVideoReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [zoomScale, setZoomScale] = useState(1.0);
   const [logoError, setLogoError] = useState(false);
 
-  // Detect mobile & reduced motion
+  // Detect mobile & reduced motion preferences
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -59,7 +64,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     };
   }, []);
 
-  // Main scroll-scrub loop
+  // Main high-performance scroll & video scrub loop
   useEffect(() => {
     const video = videoRef.current;
     if (!video || reducedMotion) return;
@@ -70,8 +75,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
     let targetProgress = 0;
     let easedProgress = 0;
-    let isSeeking = false;
-    let lastSeekTimestamp = 0;
     let rafId: number;
 
     const handleLoaded = () => {
@@ -81,9 +84,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
     video.addEventListener('loadedmetadata', handleLoaded);
     video.addEventListener('canplay', handleLoaded);
-    video.addEventListener('seeked', () => {
-      isSeeking = false;
-    });
 
     if (video.readyState >= 1) {
       handleLoaded();
@@ -97,33 +97,77 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       }
     };
 
-    const scrubLoop = (timestamp: number) => {
-      // 1. Ease scroll progress toward target using LERP_FACTOR
+    // Fast seek callback on seek completion
+    const onSeeked = () => {
+      if (!video || !isFinite(video.duration)) return;
+      const targetTime = targetProgress * video.duration;
+      if (Math.abs(targetTime - video.currentTime) > 0.02) {
+        video.currentTime = targetTime;
+      }
+    };
+
+    video.addEventListener('seeked', onSeeked);
+
+    // Direct chapter opacity & transform calculator (no CSS transition fighting)
+    const updateChapter = (
+      el: HTMLDivElement | null,
+      start: number,
+      peakStart: number,
+      peakEnd: number,
+      end: number
+    ) => {
+      if (!el) return;
+      let opacity = 0;
+      let translateY = 20;
+
+      if (easedProgress >= start && easedProgress <= end) {
+        if (easedProgress < peakStart) {
+          const f = (easedProgress - start) / (peakStart - start);
+          opacity = f;
+          translateY = 20 * (1 - f);
+        } else if (easedProgress <= peakEnd) {
+          opacity = 1;
+          translateY = 0;
+        } else {
+          const f = (easedProgress - peakEnd) / (end - peakEnd);
+          opacity = 1 - f;
+          translateY = -20 * f;
+        }
+      } else if (easedProgress > end) {
+        opacity = 0;
+        translateY = -20;
+      }
+
+      el.style.opacity = opacity.toFixed(3);
+      el.style.transform = `translate3d(0, ${translateY.toFixed(1)}px, 0)`;
+      el.style.pointerEvents = opacity > 0.08 ? 'auto' : 'none';
+      el.style.visibility = opacity > 0.005 ? 'visible' : 'hidden';
+    };
+
+    const scrubLoop = () => {
+      // 1. Ease progress with LERP_FACTOR for silky motion
       const progressDiff = targetProgress - easedProgress;
       easedProgress += progressDiff * SCRUB.LERP_FACTOR;
-      setScrollProgress(easedProgress);
 
-      // 2. Subtle slow zoom (scale 1.0 to 1.06)
-      const scale = 1.0 + easedProgress * 0.06;
-      setZoomScale(scale);
+      // 2. Video frame seek & subtle slow zoom (scale 1.0 to 1.06)
+      if (video) {
+        const scale = 1.0 + easedProgress * 0.06;
+        video.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
 
-      // 3. Ease video.currentTime toward targetTime without stuttering
-      if (video && isFinite(video.duration) && video.duration > 0) {
-        const targetVideoTime = easedProgress * video.duration;
-        const timeDiff = targetVideoTime - video.currentTime;
-
-        // Prevent seek-choking: only seek if previous seek finished or 90ms elapsed
-        const now = timestamp || performance.now();
-        if (!isSeeking || now - lastSeekTimestamp > 90) {
-          if (Math.abs(timeDiff) > 0.008) {
-            // Clamp seek step with MAX_SEEK_STEP_S to avoid abrupt jumps
-            const step = Math.sign(timeDiff) * Math.min(Math.abs(timeDiff) * 0.5, SCRUB.MAX_SEEK_STEP_S);
-            isSeeking = true;
-            lastSeekTimestamp = now;
-            video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + step));
+        if (isFinite(video.duration) && video.duration > 0) {
+          const targetVideoTime = easedProgress * video.duration;
+          if (!video.seeking && Math.abs(targetVideoTime - video.currentTime) > 0.012) {
+            video.currentTime = targetVideoTime;
           }
         }
       }
+
+      // 3. Direct DOM updates for chapters without triggering React re-renders
+      updateChapter(ch0Ref.current, 0.00, 0.00, 0.17, 0.27);
+      updateChapter(ch1Ref.current, 0.20, 0.28, 0.42, 0.50);
+      updateChapter(ch2Ref.current, 0.44, 0.52, 0.66, 0.74);
+      updateChapter(ch3Ref.current, 0.68, 0.76, 0.88, 0.94);
+      updateChapter(ch4Ref.current, 0.88, 0.95, 1.00, 1.00);
 
       rafId = requestAnimationFrame(scrubLoop);
     };
@@ -138,58 +182,16 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       window.removeEventListener('resize', onScroll);
       video.removeEventListener('loadedmetadata', handleLoaded);
       video.removeEventListener('canplay', handleLoaded);
+      video.removeEventListener('seeked', onSeeked);
       cancelAnimationFrame(rafId);
     };
   }, [reducedMotion]);
 
-  // Scroll to Chapter 2 ("How It Works")
+  // Smooth scroll to Chapter 2 ("See how it works")
   const scrollToHowItWorks = () => {
     const totalScrollable = document.documentElement.scrollHeight - window.innerHeight;
     const targetY = totalScrollable * 0.30;
     window.scrollTo({ top: targetY, behavior: 'smooth' });
-  };
-
-  /**
-   * Helper to compute smooth opacity and translateY for each chapter
-   * Crossfades overlapping chapters with no empty moments or hard cuts.
-   */
-  const getChapterStyle = (start: number, peakStart: number, peakEnd: number, end: number) => {
-    let opacity = 0;
-    let translateY = 24;
-
-    if (scrollProgress >= start && scrollProgress <= end) {
-      if (scrollProgress < peakStart) {
-        // Fading in
-        const fraction = (scrollProgress - start) / (peakStart - start);
-        opacity = Math.min(Math.max(fraction, 0), 1);
-        translateY = 24 * (1 - fraction);
-      } else if (scrollProgress <= peakEnd) {
-        // Fully visible peak
-        opacity = 1;
-        translateY = 0;
-      } else {
-        // Fading out
-        const fraction = (scrollProgress - peakEnd) / (end - peakEnd);
-        opacity = Math.max(0, 1 - fraction);
-        translateY = -24 * fraction;
-      }
-    } else if (scrollProgress < start) {
-      opacity = 0;
-      translateY = 24;
-    } else {
-      opacity = 0;
-      translateY = -24;
-    }
-
-    const isInteractive = opacity > 0.08;
-
-    return {
-      opacity,
-      transform: `translate3d(0, ${translateY.toFixed(1)}px, 0)`,
-      transition: 'opacity 120ms linear, transform 120ms linear',
-      pointerEvents: isInteractive ? ('auto' as const) : ('none' as const),
-      visibility: opacity > 0.005 ? ('visible' as const) : ('hidden' as const),
-    };
   };
 
   const totalVh = isMobile ? SCRUB.MOBILE_SCROLL_LENGTH_VH : SCRUB.SCROLL_LENGTH_VH;
@@ -201,7 +203,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
       className="relative w-full bg-[#02040A] text-[#C9D3EA] selection:bg-cyan-500/30 selection:text-cyan-200"
     >
       {/* ===================================================================
-          1. FULL-BLEED FIXED BACKGROUND VIDEO (Visible in 80%+ of viewport)
+          1. FULL-BLEED FIXED BACKGROUND VIDEO (Visible in 85%+ of viewport)
           =================================================================== */}
       <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden select-none">
         {!reducedMotion ? (
@@ -216,9 +218,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             className="w-full h-full object-cover object-center"
             style={{
               opacity: videoReady ? 0.95 : 0.6,
-              transform: `scale(${zoomScale}) translateZ(0)`,
               willChange: 'transform',
-              transition: 'opacity 1000ms ease',
+              transition: 'opacity 800ms ease',
             }}
           />
         ) : (
@@ -239,8 +240,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             CHAPTER 1: HERO
             ================================================================= */}
         <div
-          style={getChapterStyle(0.0, 0.0, 0.17, 0.27)}
-          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto"
+          ref={ch0Ref}
+          style={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
+          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto will-change-transform"
         >
           {/* Soft local radial vignette behind text for legibility (max 35% opacity) */}
           <div
@@ -299,8 +301,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             Upload -> Ask -> Evidence -> Verdict in horizontal line
             ================================================================= */}
         <div
-          style={getChapterStyle(0.20, 0.28, 0.42, 0.50)}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto"
+          ref={ch1Ref}
+          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">
@@ -313,7 +316,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
           {/* 4 Steps in a Horizontal Line with thin glowing connector */}
           <div className="relative w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {/* Thin Glowing Line behind steps on desktop */}
             <div className="hidden lg:block absolute top-[44px] left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-[#22D3EE]/40 to-transparent -z-10" />
 
             {/* Step 1: Upload */}
@@ -392,11 +394,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
         {/* =================================================================
             CHAPTER 3: THE THREE VERDICTS (The Trust Story)
-            ANSWERED (green), UNCERTAIN (amber), REFUSED (red)
+            Display style identical to Image 2: 3-column vertical card grid
             ================================================================= */}
         <div
-          style={getChapterStyle(0.44, 0.52, 0.66, 0.74)}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-4xl mx-auto"
+          ref={ch2Ref}
+          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">
@@ -410,55 +413,57 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          <div className="w-full space-y-4">
-            {/* ANSWERED */}
-            <div className="light-glass-card p-5 sm:p-6 flex items-start sm:items-center gap-4 border-l-4 border-l-emerald-400">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5 sm:mt-0" strokeWidth={1.5} />
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
-                <span className="font-mono text-xs font-bold text-emerald-300 uppercase tracking-widest">
+          {/* 3-Column Grid of Vertical Cards (matching Image 2) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1: ANSWERED */}
+            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-emerald-400/60">
+              <div>
+                <CheckCircle2 className="w-6 h-6 text-emerald-400 mb-4" strokeWidth={1.5} />
+                <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   ANSWERED
-                </span>
-                <span className="font-sans text-sm sm:text-base text-slate-200">
+                </h3>
+                <p className="font-sans text-sm text-[#C9D3EA] leading-relaxed">
                   High-confidence pixel proof meeting strict GSD resolution and cloud cover limits.
-                </span>
+                </p>
               </div>
             </div>
 
-            {/* UNCERTAIN */}
-            <div className="light-glass-card p-5 sm:p-6 flex items-start sm:items-center gap-4 border-l-4 border-l-amber-400">
-              <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5 sm:mt-0" strokeWidth={1.5} />
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
-                <span className="font-mono text-xs font-bold text-amber-300 uppercase tracking-widest">
+            {/* Card 2: UNCERTAIN */}
+            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-amber-400/60">
+              <div>
+                <AlertTriangle className="w-6 h-6 text-amber-400 mb-4" strokeWidth={1.5} />
+                <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   UNCERTAIN
-                </span>
-                <span className="font-sans text-sm sm:text-base text-slate-200">
+                </h3>
+                <p className="font-sans text-sm text-[#C9D3EA] leading-relaxed">
                   Cloud occlusion, atmospheric haze, or low sun angles prevent factual assertion.
-                </span>
+                </p>
               </div>
             </div>
 
-            {/* REFUSED */}
-            <div className="light-glass-card p-5 sm:p-6 flex items-start sm:items-center gap-4 border-l-4 border-l-rose-400">
-              <XCircle className="w-6 h-6 text-rose-400 shrink-0 mt-0.5 sm:mt-0" strokeWidth={1.5} />
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
-                <span className="font-mono text-xs font-bold text-rose-300 uppercase tracking-widest">
+            {/* Card 3: REFUSED */}
+            <div className="light-glass-card p-6 flex flex-col justify-between border-t-2 border-t-rose-400/60">
+              <div>
+                <XCircle className="w-6 h-6 text-rose-400 mb-4" strokeWidth={1.5} />
+                <h3 className="font-heading font-semibold text-lg text-white/95 mb-2">
                   REFUSED
-                </span>
-                <span className="font-sans text-sm sm:text-base text-slate-200">
+                </h3>
+                <p className="font-sans text-sm text-[#C9D3EA] leading-relaxed">
                   Query exceeds physical optical diffraction limits or violates spatial safety policies.
-                </span>
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* =================================================================
-            CHAPTER 4: USE CASES
+            CHAPTER 4: USE CASES (Image 2)
             Forest protection, flood-plain growth, disaster response
             ================================================================= */}
         <div
-          style={getChapterStyle(0.68, 0.76, 0.88, 0.94)}
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto"
+          ref={ch3Ref}
+          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 max-w-5xl mx-auto will-change-transform"
         >
           <div className="text-center mb-10 sm:mb-12">
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#22D3EE] font-medium block mb-3">
@@ -516,8 +521,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             ONE centered button to "/chat", logo in footer
             ================================================================= */}
         <div
-          style={getChapterStyle(0.88, 0.95, 1.0, 1.0)}
-          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-24 pb-8"
+          ref={ch4Ref}
+          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
+          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-24 pb-8 will-change-transform"
         >
           {/* Centered CTA */}
           <div className="my-auto text-center flex flex-col items-center">
