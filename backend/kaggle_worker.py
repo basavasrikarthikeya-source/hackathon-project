@@ -155,7 +155,6 @@ def ask_model(prompt: str, images: list[Image.Image]) -> str:
 # ==============================================================================
 def parse_structured(raw: str):
     """Tolerantly parses JSON answer and normalized bounding boxes."""
-    # Search for first JSON block in model response
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if m:
         try:
@@ -163,7 +162,6 @@ def parse_structured(raw: str):
             return d.get("answer", raw), d.get("boxes", [])
         except Exception:
             pass
-    # Graceful fallback: text-only answer with empty boxes
     return raw, []
 
 def draw_tactical_marks(base_img: Image.Image, boxes: list) -> Image.Image:
@@ -177,7 +175,6 @@ def draw_tactical_marks(base_img: Image.Image, boxes: list) -> Image.Image:
 
     for b in boxes:
         try:
-            # Scaled pixel coordinates
             x1 = max(0, min(W, int(b.get("x1", 0) / 1000.0 * W)))
             y1 = max(0, min(H, int(b.get("y1", 0) / 1000.0 * H)))
             x2 = max(0, min(W, int(b.get("x2", 0) / 1000.0 * W)))
@@ -230,7 +227,6 @@ def process(job_id: str, prompt: str, image_paths):
         # Step 4: Download original images from Supabase Storage
         imgs = []
         for p in image_paths:
-            # Support both relative paths and full URLs
             url = p if p.startswith("http") else f"{PUB_STORAGE_URL}{p}"
             print(f"[FETCH] Downloading: {url}")
             resp = requests.get(url, stream=True, timeout=30)
@@ -288,24 +284,144 @@ def process(job_id: str, prompt: str, image_paths):
         return f"ERROR: {e}"
 
 # ==============================================================================
-# 5. GRADIO TUNNEL LAUNCHER (THE DOORBELL)
+# 5. GRADIO TUNNEL LAUNCHER (THE DOORBELL & DIAGNOSTIC CONSOLE)
 # ==============================================================================
 def launch_worker():
     """Initializes the model and launches the Gradio command tunnel."""
     load_vlm_model()
 
-    # Exact Gradio Interface signature matching the locked contract
-    demo = gr.Interface(
-        fn=process,
-        inputs=[
-            gr.Textbox(label="job_id"),
-            gr.Textbox(label="prompt"),
-            gr.JSON(label="image_paths")
-        ],
-        outputs=gr.Textbox(label="status"),
-        title="SatQuery / Drishti - AI Engine Worker",
-        description="Kaggle Model Host for ST-09 Chakravyuh 2026"
-    )
+    custom_css = """
+    .gradio-container {
+        background-color: #080417 !important;
+        color: #f1f5f9 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+    .drishti-header {
+        background: linear-gradient(135deg, #130a2f 0%, #1e1045 100%);
+        border: 1px solid rgba(0, 242, 254, 0.3);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 242, 254, 0.15);
+    }
+    .drishti-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: rgba(0, 242, 254, 0.15);
+        border: 1px solid rgba(0, 242, 254, 0.4);
+        color: #00f2fe;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+    .ui-callout {
+        background: rgba(6, 182, 212, 0.1);
+        border-left: 4px solid #00f2fe;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-top: 12px;
+        font-size: 13px;
+        color: #e2e8f0;
+    }
+    """
+
+    with gr.Blocks(title="Drishti / SatQuery - AI Engine Worker", css=custom_css) as demo:
+        gr.HTML("""
+        <div class="drishti-header">
+            <span class="drishti-badge">ST-09 Chakravyuh 2026 &bull; Model Host</span>
+            <h1 style="color: #ffffff; font-size: 26px; font-weight: 800; margin: 4px 0 8px 0; letter-spacing: -0.02em;">
+                DRISHTI <span style="color: #94a3b8; font-weight: 400;">/ SatQuery AI Worker</span>
+            </h1>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.5;">
+                Multimodal Geospatial Intelligence Engine (Qwen2.5-VL) &bull; Model Flags, Humans Decide.
+            </p>
+            <div class="ui-callout">
+                <strong>Looking for the Drishti Analyst Web UI (Photos 2 & 3)?</strong><br>
+                This Gradio page is the <em>backend model worker</em> running on GPU.<br>
+                To view and use the official <strong>Drishti Studio interface</strong> with the cosmic sidebar, projects grid, and analysis dropzone, open:
+                <a href="http://localhost:3000" target="_blank" style="color: #00f2fe; font-weight: bold; text-decoration: underline; margin-left: 4px;">
+                    http://localhost:3000
+                </a>
+            </div>
+        </div>
+        """)
+
+        with gr.Row():
+            with gr.Column(scale=3):
+                gr.Markdown("### Command Channel Inputs (`/predict`)")
+                job_id_input = gr.Textbox(label="job_id (UUID)", placeholder="e.g. 1a or UUID", value="1a")
+                prompt_input = gr.Textbox(
+                    label="prompt (Officer Query)",
+                    placeholder="e.g. Detect flood inundation extent and embankment breaches.",
+                    lines=2
+                )
+                image_paths_input = gr.JSON(
+                    label="image_paths (Array of Supabase Storage paths)",
+                    value=["/samples/amaravati_before.png", "/samples/amaravati_after.png"]
+                )
+
+                with gr.Row():
+                    clear_btn = gr.Button("Clear", variant="secondary")
+                    submit_btn = gr.Button("Submit Query to Worker", variant="primary")
+
+                gr.Markdown("#### Quick Diagnostic Presets")
+                with gr.Row():
+                    preset_flood = gr.Button("Flood Breach Preset", size="sm")
+                    preset_bldg = gr.Button("Encroachment Preset", size="sm")
+                    preset_canopy = gr.Button("Canopy Preset", size="sm")
+
+            with gr.Column(scale=2):
+                gr.Markdown("### Inference Status & Output")
+                status_output = gr.Textbox(
+                    label="Worker Status / Direct Output",
+                    placeholder="Worker execution logs and results will appear here...",
+                    lines=8
+                )
+                gr.Markdown("""
+                > **Single Source of Truth**: The worker updates the `jobs` table in Supabase.
+                > The Drishti Next.js frontend receives this update via **Supabase Realtime** automatically.
+                """)
+
+        # Wire up presets
+        preset_flood.click(
+            fn=lambda: (
+                "demo-flood-" + str(int(time.time())),
+                "Detect flood inundation extent and embankment breaches.",
+                ["/samples/amaravati_before.png", "/samples/amaravati_after.png"]
+            ),
+            outputs=[job_id_input, prompt_input, image_paths_input]
+        )
+        preset_bldg.click(
+            fn=lambda: (
+                "demo-bldg-" + str(int(time.time())),
+                "Count and identify building footprints inside preservation buffer.",
+                ["/mock/marked_sample.png"]
+            ),
+            outputs=[job_id_input, prompt_input, image_paths_input]
+        )
+        preset_canopy.click(
+            fn=lambda: (
+                "demo-canopy-" + str(int(time.time())),
+                "Measure mangrove canopy coverage and foliage density loss.",
+                ["/projects/sundarbans.jpg"]
+            ),
+            outputs=[job_id_input, prompt_input, image_paths_input]
+        )
+
+        # Wire up predict endpoint (preserving exact locked contract)
+        submit_btn.click(
+            fn=process,
+            inputs=[job_id_input, prompt_input, image_paths_input],
+            outputs=status_output,
+            api_name="predict"
+        )
+        clear_btn.click(
+            fn=lambda: ("", "", []),
+            outputs=[job_id_input, prompt_input, image_paths_input]
+        )
 
     print("\n" + "=" * 80)
     print("LAUNCHING GRADIO PUBLIC TUNNEL (share=True)...")
