@@ -771,8 +771,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
             ================================================================= */}
         <div
           ref={ch4Ref}
-          style={{ opacity: 0, transform: 'translate3d(0, 20px, 0)', visibility: 'hidden' }}
-          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-24 pb-8 will-change-transform"
+          style={{
+            opacity: 0,
+            transform: 'translate3d(0, 28px, 0) scale3d(0.975, 0.975, 1)',
+            visibility: 'hidden',
+            backfaceVisibility: 'hidden',
+          }}
+          className="absolute inset-0 flex flex-col justify-between items-center px-4 max-w-4xl mx-auto pt-24 pb-8 will-change-[transform,opacity,filter]"
         >
           {/* Centered CTA */}
           <div className="my-auto text-center flex flex-col items-center">

@@ -52,16 +52,39 @@ export const ScrollBackgroundVideo: React.FC<ScrollBackgroundVideoProps> = ({
       handleLoaded();
     }
 
+    let isSeeking = false;
+    let pendingSeekTime: number | null = null;
+    let currentTime = 0;
+
+    const performSeek = (targetSec: number) => {
+      if (!video || !isFinite(video.duration) || video.duration <= 0 || video.readyState < 2) return;
+      const clamped = Math.max(0, Math.min(video.duration, targetSec));
+      if (isSeeking || video.seeking) {
+        pendingSeekTime = clamped;
+        return;
+      }
+      if (Math.abs(clamped - video.currentTime) > 0.015) {
+        isSeeking = true;
+        video.currentTime = clamped;
+      }
+    };
+
+    const handleSeeked = () => {
+      isSeeking = false;
+      if (pendingSeekTime !== null) {
+        const next = pendingSeekTime;
+        pendingSeekTime = null;
+        performSeek(next);
+      }
+    };
+
+    video.addEventListener('seeked', handleSeeked);
+
     // Smooth seek loop using requestAnimationFrame
     const updateVideoFrame = () => {
       if (video && isFinite(video.duration) && video.duration > 0) {
-        if (!video.seeking) {
-          const diff = targetTimeRef.current - video.currentTime;
-          // Apply gentle lerp if difference is noticeable
-          if (Math.abs(diff) > 0.015) {
-            video.currentTime = video.currentTime + diff * 0.22;
-          }
-        }
+        currentTime += (targetTimeRef.current - currentTime) * 0.12;
+        performSeek(currentTime);
       }
       animationFrameRef.current = requestAnimationFrame(updateVideoFrame);
     };
@@ -91,6 +114,7 @@ export const ScrollBackgroundVideo: React.FC<ScrollBackgroundVideoProps> = ({
       video.removeEventListener('loadedmetadata', handleLoaded);
       video.removeEventListener('loadeddata', handleLoaded);
       video.removeEventListener('canplay', handleLoaded);
+      video.removeEventListener('seeked', handleSeeked);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
